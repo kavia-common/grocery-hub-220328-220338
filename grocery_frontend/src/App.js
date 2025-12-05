@@ -10,6 +10,11 @@ import OrdersPage from "./pages/OrdersPage";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 
+/**
+ * PUBLIC_INTERFACE
+ * ProtectedRoute ensures routes are accessible only when authenticated.
+ * If no token is present, it redirects to /login.
+ */
 function ProtectedRoute({ children }) {
   const { token } = useAuth();
   if (!token) return <Navigate to="/login" replace />;
