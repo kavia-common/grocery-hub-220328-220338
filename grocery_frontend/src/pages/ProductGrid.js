@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { fetchProducts } from "../services/productsService";
+import { useWishlist } from "../wishlist/WishlistContext";
 
 export default function ProductGrid() {
   const [loading, setLoading] = useState(true);
@@ -13,6 +14,8 @@ export default function ProductGrid() {
   const search = params.get("search") || "";
   const category = params.get("category") || "";
   const { token } = useAuth();
+  const { isFavorite, toggle } = useWishlist();
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -43,6 +46,19 @@ export default function ProductGrid() {
       alert("Added to cart");
     } catch (e) {
       alert(e?.response?.data?.message || "Failed to add to cart");
+    }
+  };
+
+  const quickBuy = async (productId) => {
+    if (!token) {
+      setError("Please login to purchase");
+      return;
+    }
+    try {
+      await api.post("/api/cart", { product_id: productId, quantity: 1 });
+      navigate("/checkout");
+    } catch (e) {
+      setError(e?.response?.data?.message || "Failed to quick buy");
     }
   };
 
@@ -80,6 +96,26 @@ export default function ProductGrid() {
               </div>
             ) : null}
 
+            <button
+              aria-label={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+              title={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+              onClick={() => toggle(p.id)}
+              className="btn btn-ghost"
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                padding: "6px 10px",
+                borderRadius: 999,
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+              }}
+            >
+              <span style={{ color: isFavorite(p.id) ? "var(--secondary)" : "#6b7280" }}>
+                {isFavorite(p.id) ? "♥" : "♡"}
+              </span>
+            </button>
+
             <Link to={`/product/${p.id}`}>
               <img
                 alt={p.name}
@@ -112,6 +148,9 @@ export default function ProductGrid() {
             <div className="row" style={{ marginTop: 8 }}>
               <button className="btn btn-primary" onClick={() => addToCart(p.id)}>
                 Add to Cart
+              </button>
+              <button className="btn btn-secondary" onClick={() => quickBuy(p.id)}>
+                Quick Buy
               </button>
               <div className="spacer" />
               <Link className="btn btn-ghost" to={`/product/${p.id}`}>

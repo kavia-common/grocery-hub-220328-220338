@@ -21,6 +21,7 @@ export default function Header() {
       </form>
       <nav className="nav">
         <Link to="/">Home</Link>
+        <Link to="/wishlist">Wishlist</Link>
         <Link to="/cart">Cart</Link>
         <Link to="/orders">Orders</Link>
         {user ? (
