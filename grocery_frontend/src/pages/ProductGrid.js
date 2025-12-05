@@ -7,6 +7,7 @@ import { isSubscribed, subscribe, unsubscribe, popNextBanner } from "../services
 import { useWishlist } from "../wishlist/WishlistContext";
 import SmartSuggestions from "../components/SmartSuggestions";
 import BuyAgain from "../components/BuyAgain";
+import { listCombos } from "../services/combosService";
 
 export default function ProductGrid() {
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,7 @@ export default function ProductGrid() {
   const [subs, setSubs] = useState(new Set());
   const { isFavorite, toggle } = useWishlist();
   const navigate = useNavigate();
+  const [topCombos, setTopCombos] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -46,6 +48,17 @@ export default function ProductGrid() {
         if (active) setError(e?.response?.data?.message || "Failed to load products");
       } finally {
         if (active) setLoading(false);
+      }
+    })();
+    (async () => {
+      try {
+        const data = await listCombos();
+        if (active) {
+          const top = (data || []).sort((a,b)=> (b.savingsPercent||0) - (a.savingsPercent||0)).slice(0,2);
+          setTopCombos(top);
+        }
+      } catch {
+        if (active) setTopCombos([]);
       }
     })();
     (async () => {
@@ -137,6 +150,42 @@ export default function ProductGrid() {
               <strong>{banner}</strong>
             </div>
             <button className="btn btn-ghost" onClick={() => setBanner("")}>Dismiss</button>
+          </div>
+        </div>
+      ) : null}
+
+      {topCombos.length > 0 ? (
+        <div className="card" style={{ marginBottom: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.10), #ffffff)", border: "1px solid #FDE68A" }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <strong>Featured Combos</strong>
+              <span className="badge" style={{ background: "#FEF3C7", color: "#B45309" }}>Save more</span>
+            </div>
+            <Link to="/combos" className="btn btn-ghost">View all</Link>
+          </div>
+          <div className="grid" style={{ marginTop: 10 }}>
+            {topCombos.map((c) => (
+              <Link key={c.id} to={`/combos/${c.id}`} className="card" style={{ overflow: "hidden", textDecoration: "none" }}>
+                <div style={{ height: 120, background: "#F3F4F6" }}>
+                  <img alt={c.title} src={c.image_url || "https://via.placeholder.com/400x300?text=Combo"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: "#111827" }}>{c.title}</div>
+                    <div className="small" style={{ color: "#6B7280" }}>
+                      {c.items.map(i => `${i.qty} x ${i.name}`).join(" · ")}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ color: "#2563EB", fontWeight: 700 }}>${Number(c.comboPrice || 0).toFixed(2)}</div>
+                    <div className="small" style={{ textDecoration: "line-through", color: "#9CA3AF" }}>${Number(c.originalPrice || 0).toFixed(2)}</div>
+                    {c.savingsPercent > 0 ? (
+                      <div className="badge" style={{ background: "#FEF3C7", color: "#B45309", marginTop: 4 }}>Save {c.savingsPercent}%</div>
+                    ) : null}
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       ) : null}

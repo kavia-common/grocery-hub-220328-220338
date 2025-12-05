@@ -19,6 +19,8 @@ import { useNotifications } from "./notifications/NotificationsContext";
 import AddressBookPage from "./pages/AddressBookPage";
 import { AddressProvider } from "./addresses/AddressContext";
 import BuyAgainPage from "./pages/BuyAgainPage";
+import CombosPage from "./pages/CombosPage";
+import ComboDetailPage from "./pages/ComboDetailPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -57,6 +59,8 @@ function AppShell() {
           <NotificationBanner />
           <Routes>
             <Route path="/" element={<ProductGrid />} />
+            <Route path="/combos" element={<CombosPage />} />
+            <Route path="/combos/:comboId" element={<ComboDetailPage />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route

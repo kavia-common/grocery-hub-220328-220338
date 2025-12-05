@@ -118,3 +118,17 @@ export function simulateRestock(list, productId, restockQty = 20) {
   arr[idx] = { ...p, stockQty: nextQty, isInStock: nextQty > 0 };
   return arr;
 }
+
+/**
+ * PUBLIC_INTERFACE
+ * addToCart: adds an item to the cart using backend when available.
+ * The optional note is ignored by backend but preserved in returned object for mock flows.
+ */
+export async function addToCart(productId, quantity = 1, note) {
+  try {
+    const res = await api.post("/api/cart", { product_id: productId, quantity });
+    return res.data;
+  } catch {
+    return { product_id: productId, quantity, note };
+  }
+}

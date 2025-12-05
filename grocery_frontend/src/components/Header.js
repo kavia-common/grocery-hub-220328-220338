@@ -31,6 +31,7 @@ export default function Header() {
       </form>
       <nav className="nav" style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Link to="/">Home</Link>
+        <Link to="/combos" title="Combo Packs">Combos</Link>
         <Link to="/instant" title="Fast Delivery">Instant</Link>
         <Link to="/wishlist">Wishlist</Link>
         <Link to="/coupons">Offers</Link>
