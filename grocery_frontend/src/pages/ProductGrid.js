@@ -6,6 +6,7 @@ import { fetchProducts, fetchInstantProducts } from "../services/productsService
 import { isSubscribed, subscribe, unsubscribe, popNextBanner } from "../services/stockAlertsService";
 import { useWishlist } from "../wishlist/WishlistContext";
 import SmartSuggestions from "../components/SmartSuggestions";
+import BuyAgain from "../components/BuyAgain";
 
 export default function ProductGrid() {
   const [loading, setLoading] = useState(true);
@@ -30,7 +31,6 @@ export default function ProductGrid() {
       try {
         const data = await fetchProducts({ search: search || undefined, category: category || undefined });
         if (active) setItems(data);
-        // Load quick section only on main listing (no search/category filters)
         if (active && !search && !category) {
           fetchInstantProducts()
             .then((list) => {
@@ -48,7 +48,6 @@ export default function ProductGrid() {
         if (active) setLoading(false);
       }
     })();
-    // subscription snapshot for current products
     (async () => {
       try {
         const ids = await Promise.all(
@@ -64,7 +63,6 @@ export default function ProductGrid() {
       }
     })();
 
-    // banner polling (lightweight)
     const t = setInterval(() => {
       const msg = popNextBanner();
       if (msg) setBanner(msg);
@@ -73,7 +71,7 @@ export default function ProductGrid() {
       active = false;
       clearInterval(t);
     };
-  }, [search, category]);
+  }, [search, category]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addToCart = async (productId) => {
     if (!token) {
@@ -142,13 +140,17 @@ export default function ProductGrid() {
           </div>
         </div>
       ) : null}
+
       {token ? (
         <div style={{ marginBottom: 12 }}>
+          {/* Buy Again section */}
+          <BuyAgain limit={6} />
+          {/* Smart Suggestions */}
           <SmartSuggestions
             location="grid"
             limit={4}
             onAdded={() => {
-              // Keep behavior simple: no reload needed here; cart updates are server-side.
+              // cart update happens server-side; no reload needed
             }}
           />
         </div>
@@ -193,154 +195,154 @@ export default function ProductGrid() {
       ) : null}
 
       <div className="grid">
-      {items.map((p) => {
-        const hasDiscount = p.isDiscounted || (typeof p.discountPercent === "number" && p.discountPercent > 0);
-        const weightOrQuality = p.weight || p.quality || "";
-        const inStock = typeof p.stockQty === "number" ? p.stockQty > 0 : (typeof p.isInStock === "boolean" ? p.isInStock : true);
-        const subscribed = subs.has(Number(p.id));
-        return (
-          <div key={p.id} className={`card product-card ${p.isInstant ? "instant-card" : ""}`} style={{ position: "relative" }}>
-            {hasDiscount ? (
-              <div
-                className="discount-badge"
-                aria-label="discount"
-                title="Discount available"
+        {items.map((p) => {
+          const hasDiscount = p.isDiscounted || (typeof p.discountPercent === "number" && p.discountPercent > 0);
+          const weightOrQuality = p.weight || p.quality || "";
+          const inStock = typeof p.stockQty === "number" ? p.stockQty > 0 : (typeof p.isInStock === "boolean" ? p.isInStock : true);
+          const subscribed = subs.has(Number(p.id));
+          return (
+            <div key={p.id} className={`card product-card ${p.isInstant ? "instant-card" : ""}`} style={{ position: "relative" }}>
+              {hasDiscount ? (
+                <div
+                  className="discount-badge"
+                  aria-label="discount"
+                  title="Discount available"
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    left: 10,
+                    background: "linear-gradient(135deg, var(--secondary), #fcd34d)",
+                    color: "#111827",
+                    fontWeight: 700,
+                    padding: "4px 8px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.15)"
+                  }}
+                >
+                  {typeof p.discountPercent === "number" && p.discountPercent > 0
+                    ? `-${p.discountPercent}%`
+                    : "Deal"}
+                </div>
+              ) : null}
+              {typeof p.stockQty === "number" ? (
+                inStock ? (
+                  <div
+                    className="badge"
+                    title={`${p.stockQty} in stock`}
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      left: 90,
+                      background: "#DBEAFE",
+                      color: "#1E40AF",
+                    }}
+                  >
+                    In stock • {p.stockQty}
+                  </div>
+                ) : (
+                  <div
+                    className="badge"
+                    title="Out of stock"
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      left: 90,
+                      background: "#FEE2E2",
+                      color: "#991B1B",
+                    }}
+                  >
+                    Out of stock
+                  </div>
+                )
+              ) : null}
+              {p.isInstant ? (
+                <div
+                  className="badge-instant"
+                  aria-label="instant delivery"
+                  title="Instant Delivery"
+                  style={{ position: "absolute", top: 10, right: 50 }}
+                >
+                  Instant Delivery{p.instantEta ? ` • ${p.instantEta}` : ""}
+                </div>
+              ) : null}
+
+              <button
+                aria-label={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+                title={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+                onClick={() => toggle(p.id)}
+                className="btn btn-ghost"
                 style={{
                   position: "absolute",
                   top: 10,
-                  left: 10,
-                  background: "linear-gradient(135deg, var(--secondary), #fcd34d)",
-                  color: "#111827",
-                  fontWeight: 700,
-                  padding: "4px 8px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.15)"
+                  right: 10,
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  background: "#ffffff",
+                  border: "1px solid #e5e7eb",
                 }}
               >
-                {typeof p.discountPercent === "number" && p.discountPercent > 0
-                  ? `-${p.discountPercent}%`
-                  : "Deal"}
-              </div>
-            ) : null}
-            {typeof p.stockQty === "number" ? (
-              inStock ? (
-                <div
-                  className="badge"
-                  title={`${p.stockQty} in stock`}
-                  style={{
-                    position: "absolute",
-                    top: 10,
-                    left: 90,
-                    background: "#DBEAFE",
-                    color: "#1E40AF",
-                  }}
-                >
-                  In stock • {p.stockQty}
-                </div>
-              ) : (
-                <div
-                  className="badge"
-                  title="Out of stock"
-                  style={{
-                    position: "absolute",
-                    top: 10,
-                    left: 90,
-                    background: "#FEE2E2",
-                    color: "#991B1B",
-                  }}
-                >
-                  Out of stock
-                </div>
-              )
-            ) : null}
-            {p.isInstant ? (
-              <div
-                className="badge-instant"
-                aria-label="instant delivery"
-                title="Instant Delivery"
-                style={{ position: "absolute", top: 10, right: 50 }}
-              >
-                Instant Delivery{p.instantEta ? ` • ${p.instantEta}` : ""}
-              </div>
-            ) : null}
-
-            <button
-              aria-label={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
-              title={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
-              onClick={() => toggle(p.id)}
-              className="btn btn-ghost"
-              style={{
-                position: "absolute",
-                top: 10,
-                right: 10,
-                padding: "6px 10px",
-                borderRadius: 999,
-                background: "#ffffff",
-                border: "1px solid #e5e7eb",
-              }}
-            >
-              <span style={{ color: isFavorite(p.id) ? "var(--secondary)" : "#6b7280" }}>
-                {isFavorite(p.id) ? "♥" : "♡"}
-              </span>
-            </button>
-
-            <Link to={`/product/${p.id}`}>
-              <img
-                alt={p.name}
-                src={p.image_url || "https://via.placeholder.com/400x300?text=Grocery"}
-              />
-            </Link>
-
-            <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
-              <div>
-                <Link to={`/product/${p.id}`}>
-                  <strong>{p.name}</strong>
-                </Link>
-                <div className="small">{p.category}</div>
-                {weightOrQuality ? (
-                  <div className="small" style={{ color: "#1f2937" }}>
-                    {weightOrQuality}
-                  </div>
-                ) : null}
-              </div>
-              <div>
-                <strong>${Number(p.price || 0).toFixed(2)}</strong>
-                {hasDiscount && typeof p.discountPercent === "number" && p.discountPercent > 0 ? (
-                  <div className="small" style={{ color: "#059669" }}>
-                    Save {p.discountPercent}%
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn btn-primary" onClick={() => addToCart(p.id)} disabled={!inStock}>
-                Add to Cart
+                <span style={{ color: isFavorite(p.id) ? "var(--secondary)" : "#6b7280" }}>
+                  {isFavorite(p.id) ? "♥" : "♡"}
+                </span>
               </button>
-              <button className="btn btn-secondary" onClick={() => quickBuy(p.id)} disabled={!inStock}>
-                Quick Buy
-              </button>
-              {!inStock ? (
-                subscribed ? (
-                  <button className="btn btn-ghost" onClick={() => onUnsubscribe(p.id)} title="Cancel reminder">
-                    🔕 Cancel
-                  </button>
-                ) : (
-                  <button className="btn btn-ghost" onClick={() => onSubscribe(p.id)} title="Remind me when in stock">
-                    🔔 Remind me
-                  </button>
-                )
-              ) : null}
-              <div className="spacer" />
-              <Link className="btn btn-ghost" to={`/product/${p.id}`}>
-                View
+
+              <Link to={`/product/${p.id}`}>
+                <img
+                  alt={p.name}
+                  src={p.image_url || "https://via.placeholder.com/400x300?text=Grocery"}
+                />
               </Link>
+
+              <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+                <div>
+                  <Link to={`/product/${p.id}`}>
+                    <strong>{p.name}</strong>
+                  </Link>
+                  <div className="small">{p.category}</div>
+                  {weightOrQuality ? (
+                    <div className="small" style={{ color: "#1f2937" }}>
+                      {weightOrQuality}
+                    </div>
+                  ) : null}
+                </div>
+                <div>
+                  <strong>${Number(p.price || 0).toFixed(2)}</strong>
+                  {hasDiscount && typeof p.discountPercent === "number" && p.discountPercent > 0 ? (
+                    <div className="small" style={{ color: "#059669" }}>
+                      Save {p.discountPercent}%
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="row" style={{ marginTop: 8 }}>
+                <button className="btn btn-primary" onClick={() => addToCart(p.id)} disabled={!inStock}>
+                  Add to Cart
+                </button>
+                <button className="btn btn-secondary" onClick={() => quickBuy(p.id)} disabled={!inStock}>
+                  Quick Buy
+                </button>
+                {!inStock ? (
+                  subscribed ? (
+                    <button className="btn btn-ghost" onClick={() => onUnsubscribe(p.id)} title="Cancel reminder">
+                      🔕 Cancel
+                    </button>
+                  ) : (
+                    <button className="btn btn-ghost" onClick={() => onSubscribe(p.id)} title="Remind me when in stock">
+                      🔔 Remind me
+                    </button>
+                  )
+                ) : null}
+                <div className="spacer" />
+                <Link className="btn btn-ghost" to={`/product/${p.id}`}>
+                  View
+                </Link>
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
     </>
   );
 }

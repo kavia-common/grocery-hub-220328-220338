@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { getOrders } from "../services/orderService";
+import api from "../api";
+import BuyAgain from "../components/BuyAgain";
+import { useNotifications } from "../notifications/NotificationsContext";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { notify, NotificationTypes } = useNotifications();
 
   useEffect(() => {
     let active = true;
@@ -26,40 +30,72 @@ export default function OrdersPage() {
     };
   }, []);
 
+  const reorderOrder = useCallback(async (order) => {
+    const items = (order.items || []);
+    const inStockItems = items.filter((it) => {
+      const p = it?.product;
+      if (!p) return false;
+      const stockQty = typeof p.stockQty === "number" ? p.stockQty : (typeof p.stock === "number" ? p.stock : 0);
+      const isInStock = p.isInStock ?? stockQty > 0;
+      return isInStock;
+    });
+    const skipped = items.filter((it) => !inStockItems.includes(it));
+
+    await Promise.all(inStockItems.map(it =>
+      api.post("/api/cart", { product_id: it.product.id, quantity: it.quantity || 1 }).catch(() => null)
+    ));
+
+    const addedCount = inStockItems.reduce((acc, it) => acc + (it.quantity || 1), 0);
+    if (addedCount > 0) {
+      notify({ type: NotificationTypes.success, message: `Re-added ${addedCount} item(s) to your cart` });
+    }
+    if (skipped.length > 0) {
+      const names = skipped.map(s => s.product?.name).filter(Boolean).slice(0, 3).join(", ");
+      notify({ type: NotificationTypes.warning, message: `Skipped out-of-stock: ${names}${skipped.length > 3 ? "…" : ""}` });
+    }
+    // Navigate to cart
+    window.location.href = "/cart";
+  }, [notify, NotificationTypes]);
+
   if (loading) return <div className="card">Loading...</div>;
   if (error) return <div className="card error">{error}</div>;
 
   return (
     <div className="card">
-      <h2>Your Orders</h2>
+      <h2 style={{ color: "#2563EB" }}>Your Orders</h2>
+      <BuyAgain limit={8} />
       {orders.length === 0 ? <p>No orders yet.</p> : null}
       <div className="list">
         {orders.map((o) => (
-          <div key={o.id} className="card">
-            <div className="row" style={{ justifyContent: "space-between" }}>
+          <div key={o.id} className="card" style={{ borderLeft: "4px solid #2563EB" }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <strong>Order #{o.id}</strong>
                 <div className="small">Placed: {new Date(o.created_at).toLocaleString()}</div>
               </div>
-              <div>
-                Status: <span className="badge">{o.status}</span>
+              <div className="row" style={{ gap: 8 }}>
+                <span className="badge">Status: {o.status}</span>
+                <button
+                  onClick={() => reorderOrder(o)}
+                  className="btn btn-primary"
+                  aria-label={`Reorder order ${o.id}`}
+                >
+                  Reorder this order
+                </button>
+                <Link className="btn btn-ghost" to={`/orders/${o.id}`}>Details</Link>
               </div>
             </div>
             <div className="list" style={{ marginTop: 8 }}>
-              {o.items?.map((oi) => (
+              {(o.items || []).slice(0, 4).map((oi) => (
                 <div key={oi.id} className="row" style={{ justifyContent: "space-between" }}>
-                  <div>
-                    {oi.product?.name} x {oi.quantity}
-                  </div>
+                  <div>{oi.product?.name} x {oi.quantity}</div>
                   <div>${Number(oi.price || oi.product?.price || 0).toFixed(2)}</div>
                 </div>
               ))}
             </div>
             <div className="row" style={{ marginTop: 8, justifyContent: "space-between" }}>
               <strong>Total: ${Number(o.total_amount || 0).toFixed(2)}</strong>
-              <Link className="btn btn-ghost" to={`/orders/${o.id}`}>
-                View Details
-              </Link>
+              <Link className="btn btn-ghost" to={`/orders/${o.id}`}>View Details</Link>
             </div>
           </div>
         ))}

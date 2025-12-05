@@ -35,6 +35,7 @@ export default function Header() {
         <Link to="/wishlist">Wishlist</Link>
         <Link to="/coupons">Offers</Link>
         <Link to="/addresses">Addresses</Link>
+        <Link to="/buy-again" style={{ color: "#F59E0B" }}>Buy Again</Link>
         <Link to="/cart">Cart</Link>
         <Link to="/orders">Orders</Link>
         <NotificationBell />

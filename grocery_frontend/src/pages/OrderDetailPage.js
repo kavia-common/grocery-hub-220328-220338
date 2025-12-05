@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import OrderTrackingStepper from "../components/OrderTrackingStepper";
 import { advanceStatus, getOrder, isBackendMode } from "../services/orderService";
+import BuyAgain from "../components/BuyAgain";
+import { useNotifications } from "../notifications/NotificationsContext";
+import api from "../api";
 
 /**
  * PUBLIC_INTERFACE
- * OrderDetailPage shows a single order with tracking, items, and totals.
+ * OrderDetailPage shows a single order with tracking, items, totals and reorder.
  */
 export default function OrderDetailPage() {
   const { orderId } = useParams();
@@ -14,6 +17,7 @@ export default function OrderDetailPage() {
   const [error, setError] = useState("");
   const [backendMode, setBackendMode] = useState(true);
   const navigate = useNavigate();
+  const { notify, NotificationTypes } = useNotifications();
 
   const load = async () => {
     setLoading(true);
@@ -43,6 +47,33 @@ export default function OrderDetailPage() {
     }
   };
 
+  const reorder = useCallback(async () => {
+    if (!order) return;
+    const items = (order.items || []);
+    const inStockItems = items.filter((it) => {
+      const p = it?.product;
+      if (!p) return false;
+      const stockQty = typeof p.stockQty === "number" ? p.stockQty : (typeof p.stock === "number" ? p.stock : 0);
+      const isInStock = p.isInStock ?? stockQty > 0;
+      return isInStock;
+    });
+    const skipped = items.filter((it) => !inStockItems.includes(it));
+
+    await Promise.all(inStockItems.map(it =>
+      api.post("/api/cart", { product_id: it.product.id, quantity: it.quantity || 1 }).catch(() => null)
+    ));
+
+    const addedCount = inStockItems.reduce((acc, it) => acc + (it.quantity || 1), 0);
+    if (addedCount > 0) {
+      notify({ type: NotificationTypes.success, message: `Re-added ${addedCount} item(s) to your cart` });
+    }
+    if (skipped.length > 0) {
+      const names = skipped.map(s => s.product?.name).filter(Boolean).slice(0, 3).join(", ");
+      notify({ type: NotificationTypes.warning, message: `Skipped out-of-stock: ${names}${skipped.length > 3 ? "…" : ""}` });
+    }
+    navigate("/cart");
+  }, [order, notify, NotificationTypes, navigate]);
+
   if (loading) return <div className="card">Loading...</div>;
   if (error) return <div className="card error">{error}</div>;
   if (!order) return <div className="card">Order not found</div>;
@@ -51,11 +82,12 @@ export default function OrderDetailPage() {
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h2 style={{ margin: 0 }}>Order #{order.id}</h2>
+          <h2 style={{ margin: 0, color: "#2563EB" }}>Order #{order.id}</h2>
           <div className="small">Placed: {new Date(order.created_at).toLocaleString()}</div>
         </div>
         <div className="row" style={{ gap: 8 }}>
           <span className="badge">Status: {order.status}</span>
+          <button className="btn btn-primary" onClick={reorder}>Reorder this order</button>
           <button className="btn" onClick={() => navigate("/orders")}>Back to Orders</button>
         </div>
       </div>
@@ -85,20 +117,40 @@ export default function OrderDetailPage() {
           <div className="small">{order.items?.length || 0} item(s)</div>
         </div>
         <div className="list" style={{ marginTop: 8 }}>
-          {(order.items || []).map((it) => (
-            <div key={it.id} className="row" style={{ justifyContent: "space-between" }}>
-              <div>
-                <div>{it.product?.name || "Item"}</div>
-                <div className="small">Qty: {it.quantity}</div>
+          {(order.items || []).map((it) => {
+            const p = it.product;
+            const inStock = p?.isInStock ?? (typeof p?.stockQty === "number" ? p.stockQty > 0 : true);
+            return (
+              <div key={it.id} className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div>{p?.name || "Item"}</div>
+                  <div className="small">Qty: {it.quantity}</div>
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <div>${Number(it.price || p?.price || 0).toFixed(2)}</div>
+                  <button
+                    className="btn btn-secondary"
+                    disabled={!inStock}
+                    onClick={() =>
+                      api.post("/api/cart", { product_id: p.id, quantity: it.quantity || 1 })
+                        .then(() => notify({ type: NotificationTypes.success, message: `Added ${p.name} again` }))
+                        .catch(() => notify({ type: NotificationTypes.error, message: "Failed to add" }))
+                    }
+                  >
+                    Add again
+                  </button>
+                  {!inStock && <span className="small" style={{ color: "#6b7280" }}>Out of stock — Remind me</span>}
+                </div>
               </div>
-              <div>${Number(it.price || it.product?.price || 0).toFixed(2)}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="row" style={{ marginTop: 8, justifyContent: "flex-end" }}>
           <strong>Total: ${Number(order.total_amount || 0).toFixed(2)}</strong>
         </div>
       </div>
+
+      <BuyAgain limit={6} />
 
       {(order.shippingAddress || order.address) ? (
         <div className="card" style={{ marginTop: 12 }}>

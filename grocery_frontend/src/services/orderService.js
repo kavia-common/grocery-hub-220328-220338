@@ -1,4 +1,5 @@
 import api from "../api";
+import { getMockProducts } from "../mock/products";
 
 /**
  * PUBLIC_INTERFACE
@@ -7,13 +8,12 @@ import api from "../api";
 export const ORDER_STATUSES = ["PLACED", "PACKED", "OUT_FOR_DELIVERY", "DELIVERED"];
 
 /**
- * Derive if backend is available for orders endpoint by probing once (cached).
+ * Detect backend availability (cached during session).
  */
 let backendAvailableCache = null;
 async function detectBackendAvailable() {
   if (backendAvailableCache !== null) return backendAvailableCache;
   try {
-    // Lightweight HEAD/GET probe
     await api.get("/api/orders", { timeout: 3000 });
     backendAvailableCache = true;
   } catch {
@@ -22,11 +22,65 @@ async function detectBackendAvailable() {
   return backendAvailableCache;
 }
 
-const LS_ORDERS_KEY = "local_orders_v1";
+/**
+ * Normalize product to include stock flags for inventory compatibility.
+ */
+function normalizeProduct(p) {
+  if (!p) return p;
+  const stockQty =
+    typeof p.stockQty === "number"
+      ? p.stockQty
+      : typeof p.stock === "number"
+      ? p.stock
+      : typeof p.inventory === "number"
+      ? p.inventory
+      : 0;
+  return {
+    ...p,
+    stockQty,
+    isInStock: stockQty > 0,
+  };
+}
+
+function normalizeOrderItems(items) {
+  return (Array.isArray(items) ? items : []).map((it, idx) => ({
+    id: it.id ?? idx + 1,
+    product: normalizeProduct(it.product),
+    quantity: Number(it.quantity || 1),
+    price: Number(it.price ?? it.product?.price ?? 0),
+  }));
+}
+
+function normalizeOrder(o) {
+  if (!o) return null;
+  const created = o.created_at || o.createdAt || new Date().toISOString();
+  const updated = o.updated_at || o.updatedAt || created;
+  const status = ORDER_STATUSES.includes(o.status) ? o.status : "PLACED";
+  return {
+    id: o.id,
+    status,
+    created_at: created,
+    updated_at: updated,
+    items: normalizeOrderItems(o.items),
+    items_summary: o.items_summary || "",
+    total_amount: typeof o.total_amount === "number" ? o.total_amount : Number(o.total || 0),
+    address: o.address || "",
+    shippingAddress: o.shippingAddress || null,
+    notes: o.notes || "",
+    timestamps: o.timestamps || {},
+  };
+}
+
+function normalizeOrders(list) {
+  return (Array.isArray(list) ? list : [])
+    .map(normalizeOrder)
+    .filter(Boolean);
+}
 
 /**
- * Local storage helpers
+ * Local storage helpers for mock orders persistence.
  */
+const LS_ORDERS_KEY = "local_orders_v1";
 function readLocalOrders() {
   try {
     const raw = localStorage.getItem(LS_ORDERS_KEY);
@@ -45,48 +99,123 @@ function writeLocalOrders(orders) {
 }
 
 /**
- * PUBLIC_INTERFACE
- * getOrders fetches all orders; uses backend if available, otherwise local.
+ * Build mock orders from mock products dataset for offline/dev use.
  */
-export async function getOrders() {
+function buildMockOrders() {
+  const products = getMockProducts();
+  const choose = (i) => normalizeProduct(products[i % products.length]);
+  const now = Date.now();
+
+  const o1Items = [
+    { id: 11, product: choose(0), quantity: 1, price: choose(0).price },
+    { id: 12, product: choose(3), quantity: 2, price: choose(3).price },
+  ];
+  const o2Items = [
+    { id: 21, product: choose(2), quantity: 1, price: choose(2).price },
+    { id: 22, product: choose(5), quantity: 3, price: choose(5).price },
+  ];
+  const sum = (items) => items.reduce((acc, it) => acc + (it.price ?? 0) * it.quantity, 0);
+  return normalizeOrders([
+    {
+      id: 1,
+      total_amount: sum(o1Items),
+      status: "DELIVERED",
+      created_at: new Date(now - 1000 * 60 * 60 * 24 * 7).toISOString(),
+      items: o1Items,
+    },
+    {
+      id: 2,
+      total_amount: sum(o2Items),
+      status: "DELIVERED",
+      created_at: new Date(now - 1000 * 60 * 60 * 24 * 14).toISOString(),
+      items: o2Items,
+    },
+  ]);
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * fetchOrders (legacy name) - kept for backward compatibility.
+ */
+export async function fetchOrders() {
+  return getPastOrders();
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * getPastOrders fetches orders (backend if available, otherwise mock).
+ */
+export async function getPastOrders() {
   const useBackend = await detectBackendAvailable();
   if (useBackend) {
     try {
       const res = await api.get("/api/orders");
-      return normalizeList(res.data);
+      return normalizeOrders(res.data);
     } catch {
-      // fallback local if backend errors at runtime
-      return normalizeList(readLocalOrders());
+      // fall back to mock orders
     }
   }
-  return normalizeList(readLocalOrders());
+  return buildMockOrders();
 }
 
 /**
  * PUBLIC_INTERFACE
- * getOrder fetches single order by id; backend if available, otherwise local.
+ * getOrderById fetches one order by id (backend fallback to mock).
  */
-export async function getOrder(id) {
+export async function getOrderById(orderId) {
   const useBackend = await detectBackendAvailable();
   if (useBackend) {
     try {
-      const res = await api.get(`/api/orders/${id}`);
-      return normalizeOrder(res.data);
+      // If backend lacks GET /api/orders/:id, fetch all and find
+      const res = await api.get("/api/orders");
+      const found = (res.data || []).find((o) => String(o.id) === String(orderId));
+      return normalizeOrder(found || null);
     } catch {
-      // fallback to local if stored
-      const local = readLocalOrders().find((o) => String(o.id) === String(id));
-      return normalizeOrder(local || null);
+      // fall back to mock
     }
   }
-  const local = readLocalOrders().find((o) => String(o.id) === String(id));
-  return normalizeOrder(local || null);
+  const mock = buildMockOrders();
+  return mock.find((o) => String(o.id) === String(orderId)) || null;
 }
 
 /**
  * PUBLIC_INTERFACE
- * createOrder creates a new order with initial status 'PLACED'.
- * Includes minimal payload: items summary, totals, timestamps.
- * Accepts shippingAddress snapshot.
+ * getFrequentItems returns products sorted by frequency across past orders.
+ */
+export async function getFrequentItems(limit = 20) {
+  const orders = await getPastOrders();
+  const freq = new Map();
+  const productMap = new Map();
+  orders.forEach((o) => {
+    (o.items || []).forEach((it) => {
+      const pid = it?.product?.id;
+      if (pid == null) return;
+      freq.set(pid, (freq.get(pid) || 0) + (it.quantity || 1));
+      productMap.set(pid, normalizeProduct(it.product));
+    });
+  });
+  const items = Array.from(freq.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([pid, count]) => ({
+      product: productMap.get(pid),
+      totalQuantity: count,
+    }));
+  return items;
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * isBackendMode returns true if backend orders API was detected.
+ */
+export async function isBackendMode() {
+  return await detectBackendAvailable();
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * createOrder creates a new order snapshot (mock-first). If backend is available, it attempts
+ * to create via backend and returns the normalized order. Otherwise stores to mock with new id.
  */
 export async function createOrder({ items = [], total = 0, address = "", notes = "", shippingAddress = null }) {
   const now = new Date().toISOString();
@@ -94,13 +223,8 @@ export async function createOrder({ items = [], total = 0, address = "", notes =
     status: "PLACED",
     created_at: now,
     updated_at: now,
-    items: (items || []).map((it) => ({
-      id: it.id ?? it.product?.id ?? Math.random(),
-      product: it.product || null,
-      quantity: Number(it.quantity || 1),
-      price: Number(it.product?.price || it.price || 0),
-    })),
-    items_summary: summarizeItems(items || []),
+    items: normalizeOrderItems(items),
+    items_summary: (items || []).map((it) => `${it.product?.name || "Item"} x ${it.quantity || 1}`).join(", "),
     total_amount: Number(total || 0),
     address: address || "",
     shippingAddress: shippingAddress || null,
@@ -119,105 +243,58 @@ export async function createOrder({ items = [], total = 0, address = "", notes =
       const res = await api.post("/api/orders", payload);
       return normalizeOrder(res.data);
     } catch {
-      // fallback to local
-      return createLocalOrder(payload);
+      // fall back to mock
     }
   }
-  return createLocalOrder(payload);
+  // mock storage: reuse buildMockOrders format with localStorage persistence
+  const orders = readLocalOrders();
+  const nextId = (orders.reduce((max, o) => Math.max(max, Number(o.id || 0)), 0) || 0) + 1;
+  const order = normalizeOrder({ id: nextId, ...payload });
+  orders.unshift(order);
+  writeLocalOrders(orders);
+  return order;
 }
 
 /**
  * PUBLIC_INTERFACE
- * advanceStatus moves order to the next status in sequence (mock/local only).
- * For backend mode, this is a no-op and returns null (UI should hide the button).
+ * getOrders (new name) returns orders; wrapper over getPastOrders
+ */
+export async function getOrders() {
+  return getPastOrders();
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * getOrder (new name) returns one order; wrapper over getOrderById
+ */
+export async function getOrder(id) {
+  return getOrderById(id);
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * advanceStatus (mock-only): progress order to the next status; returns updated order.
+ * If backend mode is on, returns null (UI should hide/disable).
  */
 export async function advanceStatus(orderId) {
   const useBackend = await detectBackendAvailable();
-  if (useBackend) return null; // Not supported in real backend mode
+  if (useBackend) return null;
 
   const orders = readLocalOrders();
   const idx = orders.findIndex((o) => String(o.id) === String(orderId));
   if (idx === -1) return null;
 
-  const order = orders[idx];
+  const order = { ...orders[idx] };
   const currentIndex = ORDER_STATUSES.indexOf(order.status);
-  if (currentIndex === -1) order.status = "PLACED";
-
-  if (currentIndex < ORDER_STATUSES.length - 1) {
-    const next = ORDER_STATUSES[currentIndex + 1];
+  const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+  if (nextIndex < ORDER_STATUSES.length) {
+    const next = ORDER_STATUSES[nextIndex];
     order.status = next;
     order.updated_at = new Date().toISOString();
     order.timestamps = order.timestamps || {};
     order.timestamps[next] = order.timestamps[next] || order.updated_at;
     orders[idx] = order;
     writeLocalOrders(orders);
-    return normalizeOrder(order);
   }
-  return normalizeOrder(order);
-}
-
-/**
- * PUBLIC_INTERFACE
- * isBackendMode returns true if the backend orders API was detected.
- */
-export async function isBackendMode() {
-  return await detectBackendAvailable();
-}
-
-/**
- * Helpers
- */
-function createLocalOrder(base) {
-  const orders = readLocalOrders();
-  // Simple ID generation
-  const nextId = (orders.reduce((max, o) => Math.max(max, Number(o.id || 0)), 0) || 0) + 1;
-  const order = { id: nextId, ...base };
-  orders.unshift(order);
-  writeLocalOrders(orders);
-  return normalizeOrder(order);
-}
-function summarizeItems(items) {
-  try {
-    const parts = (items || []).map((it) => {
-      const name = it.product?.name || "Item";
-      const qty = Number(it.quantity || 1);
-      return `${name} x ${qty}`;
-    });
-    return parts.join(", ");
-  } catch {
-    return "";
-  }
-}
-function normalizeList(list) {
-  return (Array.isArray(list) ? list : [])
-    .map((o) => normalizeOrder(o))
-    .filter(Boolean);
-}
-function normalizeOrder(o) {
-  if (!o) return null;
-  const created = o.created_at || o.createdAt || new Date().toISOString();
-  const updated = o.updated_at || o.updatedAt || created;
-  const status = ORDER_STATUSES.includes(o.status) ? o.status : "PLACED";
-  const timestamps = {
-    PLACED: o.timestamps?.PLACED || (status === "PLACED" ? created : null),
-    PACKED: o.timestamps?.PACKED || (status === "PACKED" ? updated : null),
-    OUT_FOR_DELIVERY:
-      o.timestamps?.OUT_FOR_DELIVERY || (status === "OUT_FOR_DELIVERY" ? updated : null),
-    DELIVERED: o.timestamps?.DELIVERED || (status === "DELIVERED" ? updated : null),
-  };
-  const items = Array.isArray(o.items) ? o.items : [];
-  const total = typeof o.total_amount === "number" ? o.total_amount : Number(o.total || 0);
-  return {
-    id: o.id,
-    status,
-    created_at: created,
-    updated_at: updated,
-    items,
-    items_summary: o.items_summary || "",
-    total_amount: total,
-    address: o.address || "",
-    shippingAddress: o.shippingAddress || null,
-    notes: o.notes || "",
-    timestamps,
-  };
+  return normalizeOrder(orders[idx]);
 }

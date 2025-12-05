@@ -18,6 +18,7 @@ import NotificationBanner from "./components/NotificationBanner";
 import { useNotifications } from "./notifications/NotificationsContext";
 import AddressBookPage from "./pages/AddressBookPage";
 import { AddressProvider } from "./addresses/AddressContext";
+import BuyAgainPage from "./pages/BuyAgainPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -94,6 +95,14 @@ function AppShell() {
             <Route path="/instant" element={<InstantPage />} />
             <Route path="/addresses" element={<AddressBookPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/buy-again"
+              element={
+                <ProtectedRoute>
+                  <BuyAgainPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
       </div>
