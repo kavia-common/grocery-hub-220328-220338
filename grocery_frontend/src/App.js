@@ -16,6 +16,8 @@ import OrderDetailPage from "./pages/OrderDetailPage";
 import InstantPage from "./pages/InstantPage";
 import NotificationBanner from "./components/NotificationBanner";
 import { useNotifications } from "./notifications/NotificationsContext";
+import AddressBookPage from "./pages/AddressBookPage";
+import { AddressProvider } from "./addresses/AddressContext";
 
 /**
  * PUBLIC_INTERFACE
@@ -90,6 +92,7 @@ function AppShell() {
             />
             <Route path="/coupons" element={<CouponsPage />} />
             <Route path="/instant" element={<InstantPage />} />
+            <Route path="/addresses" element={<AddressBookPage />} />
             <Route path="/login" element={<LoginPage />} />
           </Routes>
         </main>
@@ -102,7 +105,9 @@ export default function App() {
   return (
     <AuthProvider>
       <WishlistProvider>
-        <AppShell />
+        <AddressProvider>
+          <AppShell />
+        </AddressProvider>
       </WishlistProvider>
     </AuthProvider>
   );

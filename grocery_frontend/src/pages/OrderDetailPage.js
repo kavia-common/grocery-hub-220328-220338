@@ -100,10 +100,17 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {order.address ? (
+      {(order.shippingAddress || order.address) ? (
         <div className="card" style={{ marginTop: 12 }}>
           <strong>Shipping Address</strong>
-          <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{order.address}</div>
+          {order.shippingAddress ? (
+            <div style={{ marginTop: 6 }}>
+              <div><strong>{order.shippingAddress.label}</strong> • {order.shippingAddress.name} • {order.shippingAddress.phone}</div>
+              <div>{order.shippingAddress.line1}{order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}, {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}</div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{order.address}</div>
+          )}
         </div>
       ) : null}
 

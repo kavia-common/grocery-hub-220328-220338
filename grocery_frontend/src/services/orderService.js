@@ -86,8 +86,9 @@ export async function getOrder(id) {
  * PUBLIC_INTERFACE
  * createOrder creates a new order with initial status 'PLACED'.
  * Includes minimal payload: items summary, totals, timestamps.
+ * Accepts shippingAddress snapshot.
  */
-export async function createOrder({ items = [], total = 0, address = "", notes = "" }) {
+export async function createOrder({ items = [], total = 0, address = "", notes = "", shippingAddress = null }) {
   const now = new Date().toISOString();
   const payload = {
     status: "PLACED",
@@ -102,6 +103,7 @@ export async function createOrder({ items = [], total = 0, address = "", notes =
     items_summary: summarizeItems(items || []),
     total_amount: Number(total || 0),
     address: address || "",
+    shippingAddress: shippingAddress || null,
     notes: notes || "",
     timestamps: {
       PLACED: now,
@@ -214,6 +216,7 @@ function normalizeOrder(o) {
     items_summary: o.items_summary || "",
     total_amount: total,
     address: o.address || "",
+    shippingAddress: o.shippingAddress || null,
     notes: o.notes || "",
     timestamps,
   };

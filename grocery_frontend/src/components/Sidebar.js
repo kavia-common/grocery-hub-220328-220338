@@ -25,6 +25,12 @@ export default function Sidebar(){
           <Link to="/coupons" className="row" style={{ gap: 6, marginTop: 8 }}>
             <span className="badge">Offers</span> Browse coupons
           </Link>
+          <Link to="/addresses" className="row" style={{ gap: 6, marginTop: 8 }}>
+            <span className="badge">Addresses</span> Manage
+          </Link>
+          <Link to="/orders" className="row" style={{ gap: 6, marginTop: 8 }}>
+            <span className="badge">Orders</span> Your orders
+          </Link>
         </div>
       </div>
     </aside>

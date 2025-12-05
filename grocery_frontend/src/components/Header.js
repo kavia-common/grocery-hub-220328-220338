@@ -34,6 +34,7 @@ export default function Header() {
         <Link to="/instant" title="Fast Delivery">Instant</Link>
         <Link to="/wishlist">Wishlist</Link>
         <Link to="/coupons">Offers</Link>
+        <Link to="/addresses">Addresses</Link>
         <Link to="/cart">Cart</Link>
         <Link to="/orders">Orders</Link>
         <NotificationBell />

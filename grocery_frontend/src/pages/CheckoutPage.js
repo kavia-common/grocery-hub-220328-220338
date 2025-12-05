@@ -8,9 +8,10 @@ import {
   validateCoupon,
 } from "../services/couponsService";
 import { createOrder } from "../services/orderService";
+import AddressSelector from "../components/AddressSelector";
+import { useAddress } from "../addresses/AddressContext";
 
 export default function CheckoutPage() {
-  const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [cartItems, setCartItems] = useState([]);
@@ -18,6 +19,7 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const navigate = useNavigate();
+  const { selectedAddress } = useAddress();
 
   useEffect(() => {
     // load cart for totals preview
@@ -34,6 +36,7 @@ export default function CheckoutPage() {
       // Validate silently using subtotal
       onApply(existing, true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const subtotal = useMemo(
@@ -79,15 +82,30 @@ export default function CheckoutPage() {
     setLoading(true);
     setError("");
     try {
-      // Backend attempt for placing order (cart clearing handled server-side if applicable)
-      await api.post("/api/orders", { address, promo_code: appliedCoupon?.code || null }).catch(() => { /* ignore */ });
+      // Attempt backend order create
+      await api
+        .post("/api/orders", {
+          address: selectedAddress ? `${selectedAddress.line1}, ${selectedAddress.city}` : "",
+          promo_code: appliedCoupon?.code || null,
+        })
+        .catch(() => { /* ignore backend errors for mock-first */ });
 
-      // Create an order in frontend service with initial status
+      // Create an order in frontend service with snapshot of shippingAddress
       const order = await createOrder({
         items: cartItems,
         total: finalTotal,
-        address,
+        address: selectedAddress ? `${selectedAddress.line1}, ${selectedAddress.city}` : "",
         notes: appliedCoupon?.code ? `Applied ${appliedCoupon.code}` : "",
+        shippingAddress: selectedAddress ? {
+          label: selectedAddress.label,
+          name: selectedAddress.name,
+          phone: selectedAddress.phone,
+          line1: selectedAddress.line1,
+          line2: selectedAddress.line2,
+          city: selectedAddress.city,
+          state: selectedAddress.state,
+          zip: selectedAddress.zip,
+        } : null,
       });
 
       // Optional: clear cart on frontend if backend didn't
@@ -97,7 +115,6 @@ export default function CheckoutPage() {
         // ignore cart clear failures
       }
 
-      // Navigate to detail page
       navigate(`/orders/${order.id}`);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to place order");
@@ -109,15 +126,9 @@ export default function CheckoutPage() {
   return (
     <div className="card">
       <h2>Checkout</h2>
-      <div className="list">
-        <label>Shipping address</label>
-        <textarea
-          className="input"
-          rows={4}
-          placeholder="Enter your address (optional)"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <AddressSelector />
       </div>
 
       {/* Promo code box */}
