@@ -1,0 +1,4 @@
+{
+    "command": "npm install",
+    "working_directory": "/home/kavia/workspace/code-generation/grocery-hub-220328-220338/grocery_frontend"
+}
