@@ -9,7 +9,8 @@ import { fetchProductById } from "../services/productByIdService";
  * PUBLIC_INTERFACE
  * ProductDetail shows a single product with prominent image and price.
  * Assumes backend returns: { id, name, description, category, image_url, price }
- * Enhancements: wishlist heart toggle (localStorage-backed) and Quick Buy (adds 1 to cart, navigates to checkout).
+ * Enhancements: wishlist heart toggle (localStorage-backed), Quick Buy (adds 1 to cart, navigates to checkout),
+ * and Instant Delivery badge with optional ETA when p.isInstant is true.
  */
 export default function ProductDetail() {
   const { id } = useParams();
@@ -90,8 +91,19 @@ export default function ProductDetail() {
             borderRadius: 12,
             padding: 8,
             border: "1px solid #e5e7eb",
+            position: "relative",
           }}
         >
+          {p.isInstant ? (
+            <div
+              className="badge-instant"
+              aria-label="instant delivery"
+              title="Instant Delivery"
+              style={{ position: "absolute", top: 10, right: 10 }}
+            >
+              Instant Delivery{p.instantEta ? ` • ${p.instantEta}` : ""}
+            </div>
+          ) : null}
           <img
             alt={p.name}
             src={imgSrc}
@@ -110,7 +122,14 @@ export default function ProductDetail() {
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h2 style={{ margin: 0 }}>{p.name}</h2>
-              {p.category ? <div className="badge" style={{ marginTop: 6 }}>{p.category}</div> : null}
+              <div className="row" style={{ marginTop: 6, gap: 6, alignItems: "center" }}>
+                {p.category ? <div className="badge">{p.category}</div> : null}
+                {p.isInstant ? (
+                  <span className="badge-instant">
+                    Instant Delivery{p.instantEta ? ` • ${p.instantEta}` : ""}
+                  </span>
+                ) : null}
+              </div>
             </div>
             <div className="row" style={{ gap: 8 }}>
               <button

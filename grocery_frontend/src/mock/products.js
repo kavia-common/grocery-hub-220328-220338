@@ -8,6 +8,7 @@
  * - ProductGrid currently reads p.weight || p.quality for a compact display. We continue to include
  *   either weight or quality alongside weightOrQuality for backward compatibility.
  * - ProductDetail uses: id, name, description, category, image_url, price.
+ * - Instant delivery: products may include isInstant: boolean and instantEta: string (e.g., "10 min").
  */
 // PUBLIC_INTERFACE
 export function getMockProducts() {
@@ -23,7 +24,9 @@ export function getMockProducts() {
       weightOrQuality: "1 lb",
       weight: "1 lb",
       discountPercent: 10,
-      isDiscounted: true
+      isDiscounted: true,
+      isInstant: true,
+      instantEta: "10 min"
     },
     {
       id: 2,
@@ -35,7 +38,9 @@ export function getMockProducts() {
       weightOrQuality: "Organic",
       quality: "Organic",
       discountPercent: 0,
-      isDiscounted: false
+      isDiscounted: false,
+      isInstant: true,
+      instantEta: "15 min"
     },
     {
       id: 3,
@@ -47,7 +52,8 @@ export function getMockProducts() {
       weightOrQuality: "1 gal",
       weight: "1 gal",
       discountPercent: 15,
-      isDiscounted: true
+      isDiscounted: true,
+      isInstant: false
     },
     {
       id: 4,
@@ -59,7 +65,9 @@ export function getMockProducts() {
       weightOrQuality: "700 g",
       weight: "700 g",
       discountPercent: 0,
-      isDiscounted: false
+      isDiscounted: false,
+      isInstant: true,
+      instantEta: "12 min"
     },
     {
       id: 5,
@@ -72,7 +80,8 @@ export function getMockProducts() {
       weight: "8 oz",
       quality: "Organic",
       discountPercent: 20,
-      isDiscounted: true
+      isDiscounted: true,
+      isInstant: false
     },
     {
       id: 6,
@@ -83,7 +92,9 @@ export function getMockProducts() {
       price: 3.99,
       weightOrQuality: "12 count",
       discountPercent: 0,
-      isDiscounted: false
+      isDiscounted: false,
+      isInstant: true,
+      instantEta: "20 min"
     },
     {
       id: 7,
@@ -95,7 +106,8 @@ export function getMockProducts() {
       weightOrQuality: "500 g",
       weight: "500 g",
       discountPercent: 12,
-      isDiscounted: true
+      isDiscounted: true,
+      isInstant: false
     },
     {
       id: 8,
@@ -106,7 +118,9 @@ export function getMockProducts() {
       price: 4.59,
       weightOrQuality: "4 pack",
       discountPercent: 0,
-      isDiscounted: false
+      isDiscounted: false,
+      isInstant: true,
+      instantEta: "10 min"
     },
     {
       id: 9,
@@ -117,7 +131,8 @@ export function getMockProducts() {
       price: 1.59,
       weightOrQuality: "Each",
       discountPercent: 5,
-      isDiscounted: true
+      isDiscounted: true,
+      isInstant: false
     },
     {
       id: 10,
@@ -128,7 +143,8 @@ export function getMockProducts() {
       price: 3.29,
       weightOrQuality: "64 fl oz",
       discountPercent: 0,
-      isDiscounted: false
+      isDiscounted: false,
+      isInstant: false
     },
     {
       id: 11,
@@ -140,7 +156,9 @@ export function getMockProducts() {
       weightOrQuality: "6 oz • Organic",
       quality: "Organic",
       discountPercent: 18,
-      isDiscounted: true
+      isDiscounted: true,
+      isInstant: true,
+      instantEta: "10 min"
     },
     {
       id: 12,
@@ -151,7 +169,8 @@ export function getMockProducts() {
       price: 5.49,
       weightOrQuality: "32 oz",
       discountPercent: 0,
-      isDiscounted: false
+      isDiscounted: false,
+      isInstant: false
     }
   ];
 }

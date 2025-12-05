@@ -13,6 +13,7 @@ import CouponsPage from "./pages/CouponsPage";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { WishlistProvider } from "./wishlist/WishlistContext";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import InstantPage from "./pages/InstantPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -71,6 +72,7 @@ export default function App() {
                   }
                 />
                 <Route path="/coupons" element={<CouponsPage />} />
+                <Route path="/instant" element={<InstantPage />} />
                 <Route path="/login" element={<LoginPage />} />
               </Routes>
             </main>

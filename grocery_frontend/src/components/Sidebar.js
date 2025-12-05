@@ -19,7 +19,10 @@ export default function Sidebar(){
           <Link key={c} to={`/?category=${encodeURIComponent(c)}`}>{c}</Link>
         ))}
         <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 8, paddingTop: 8 }}>
-          <Link to="/coupons" className="row" style={{ gap: 6 }}>
+          <Link to="/instant" className="row" style={{ gap: 6 }}>
+            <span className="badge-instant">Instant</span> Fast Delivery
+          </Link>
+          <Link to="/coupons" className="row" style={{ gap: 6, marginTop: 8 }}>
             <span className="badge">Offers</span> Browse coupons
           </Link>
         </div>

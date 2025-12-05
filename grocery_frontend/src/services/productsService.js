@@ -2,6 +2,18 @@ import api from "../api";
 import { getMockProducts } from "../mock/products";
 
 /**
+ * Normalize backend or mock records to ensure isInstant and instantEta fields are present when available.
+ */
+function normalizeProducts(list = []) {
+  return (Array.isArray(list) ? list : []).map((p) => ({
+    ...p,
+    // Preserve existing schema; only add fields if present or default to false/undefined
+    isInstant: typeof p.isInstant === "boolean" ? p.isInstant : !!p.instant || false,
+    instantEta: p.instantEta || p.eta || undefined,
+  }));
+}
+
+/**
  * PUBLIC_INTERFACE
  * fetchProducts attempts to load products from the backend `/api/products`.
  * If the backend is unavailable or errors, it falls back to local mock data.
@@ -12,11 +24,10 @@ import { getMockProducts } from "../mock/products";
 export async function fetchProducts(params = {}) {
   try {
     const res = await api.get("/api/products", { params });
-    // Expect backend to return fields: id, name, description, category, image_url, price, weight/quality, discount meta
-    return res.data;
+    return normalizeProducts(res.data);
   } catch (e) {
     // Fallback to mock data with client-side filtering
-    const items = getMockProducts();
+    const items = normalizeProducts(getMockProducts());
     const { search, category } = params || {};
     let filtered = items;
     if (category) {
@@ -35,4 +46,32 @@ export async function fetchProducts(params = {}) {
     }
     return filtered;
   }
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * fetchInstantProducts returns only instant-delivery items with sorting:
+ * - discount desc, then by popularity if available (p.popularity), else by name asc.
+ */
+export async function fetchInstantProducts() {
+  const all = await fetchProducts({});
+  const instant = (all || []).filter((p) => !!p.isInstant);
+  const withDerived = instant.map((p) => ({
+    ...p,
+    _discount: typeof p.discountPercent === "number" ? p.discountPercent : (p.isDiscounted ? 1 : 0),
+    _pop: typeof p.popularity === "number" ? p.popularity : null,
+  }));
+  withDerived.sort((a, b) => {
+    // discount desc
+    const d = (b._discount || 0) - (a._discount || 0);
+    if (d !== 0) return d;
+    // popularity desc if both available
+    if (a._pop != null && b._pop != null) {
+      const p = b._pop - a._pop;
+      if (p !== 0) return p;
+    }
+    // name asc
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+  return withDerived;
 }

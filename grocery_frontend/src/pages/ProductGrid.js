@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
-import { fetchProducts } from "../services/productsService";
+import { fetchProducts, fetchInstantProducts } from "../services/productsService";
 import { useWishlist } from "../wishlist/WishlistContext";
 import SmartSuggestions from "../components/SmartSuggestions";
 
@@ -10,6 +10,7 @@ export default function ProductGrid() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
+  const [quick, setQuick] = useState([]);
   const loc = useLocation();
   const params = new URLSearchParams(loc.search);
   const search = params.get("search") || "";
@@ -26,6 +27,18 @@ export default function ProductGrid() {
       try {
         const data = await fetchProducts({ search: search || undefined, category: category || undefined });
         if (active) setItems(data);
+        // Load quick section only on main listing (no search/category filters)
+        if (active && !search && !category) {
+          fetchInstantProducts()
+            .then((list) => {
+              if (active) setQuick(list.slice(0, 6));
+            })
+            .catch(() => {
+              if (active) setQuick([]);
+            });
+        } else if (active) {
+          setQuick([]);
+        }
       } catch (e) {
         if (active) setError(e?.response?.data?.message || "Failed to load products");
       } finally {
@@ -79,12 +92,51 @@ export default function ProductGrid() {
           />
         </div>
       ) : null}
+
+      {/* Quick Delivery section */}
+      {quick.length > 0 ? (
+        <div className="card" style={{ marginBottom: 12, background: "linear-gradient(135deg, rgba(37,99,235,0.06), #ffffff)" }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <strong>Quick Delivery</strong>
+              <span className="badge-instant">Instant Delivery</span>
+            </div>
+            <Link to="/instant" className="btn btn-ghost">View all</Link>
+          </div>
+          <div className="grid" style={{ marginTop: 10 }}>
+            {quick.map((p) => (
+              <div key={p.id} className="card product-card instant-card" style={{ position: "relative" }}>
+                {p.isInstant ? (
+                  <div className="badge-instant" style={{ position: "absolute", top: 10, right: 10 }}>
+                    Instant{p.instantEta ? ` • ${p.instantEta}` : ""}
+                  </div>
+                ) : null}
+                <Link to={`/product/${p.id}`}>
+                  <img alt={p.name} src={p.image_url || "https://via.placeholder.com/400x300?text=Grocery"} />
+                </Link>
+                <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+                  <div>
+                    <Link to={`/product/${p.id}`}><strong>{p.name}</strong></Link>
+                    <div className="small">{p.category}</div>
+                  </div>
+                  <div><strong>${Number(p.price || 0).toFixed(2)}</strong></div>
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <button className="btn btn-primary" onClick={() => addToCart(p.id)}>Add</button>
+                  <button className="btn btn-secondary" onClick={() => quickBuy(p.id)}>Quick Buy</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid">
       {items.map((p) => {
         const hasDiscount = p.isDiscounted || (typeof p.discountPercent === "number" && p.discountPercent > 0);
         const weightOrQuality = p.weight || p.quality || "";
         return (
-          <div key={p.id} className="card product-card" style={{ position: "relative" }}>
+          <div key={p.id} className={`card product-card ${p.isInstant ? "instant-card" : ""}`} style={{ position: "relative" }}>
             {hasDiscount ? (
               <div
                 className="discount-badge"
@@ -106,6 +158,16 @@ export default function ProductGrid() {
                 {typeof p.discountPercent === "number" && p.discountPercent > 0
                   ? `-${p.discountPercent}%`
                   : "Deal"}
+              </div>
+            ) : null}
+            {p.isInstant ? (
+              <div
+                className="badge-instant"
+                aria-label="instant delivery"
+                title="Instant Delivery"
+                style={{ position: "absolute", top: 10, right: 50 }}
+              >
+                Instant Delivery{p.instantEta ? ` • ${p.instantEta}` : ""}
               </div>
             ) : null}
 
