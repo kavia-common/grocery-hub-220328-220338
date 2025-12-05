@@ -12,6 +12,7 @@ import WishlistPage from "./pages/WishlistPage";
 import CouponsPage from "./pages/CouponsPage";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { WishlistProvider } from "./wishlist/WishlistContext";
+import OrderDetailPage from "./pages/OrderDetailPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -36,10 +37,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<ProductGrid />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
-                <Route
-                  path="/wishlist"
-                  element={<WishlistPage />}
-                />
+                <Route path="/wishlist" element={<WishlistPage />} />
                 <Route
                   path="/cart"
                   element={
@@ -61,6 +59,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <OrdersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/orders/:orderId"
+                  element={
+                    <ProtectedRoute>
+                      <OrderDetailPage />
                     </ProtectedRoute>
                   }
                 />

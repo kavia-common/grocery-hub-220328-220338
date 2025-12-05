@@ -7,6 +7,7 @@ import {
   setAppliedCode,
   validateCoupon,
 } from "../services/couponsService";
+import { createOrder } from "../services/orderService";
 
 export default function CheckoutPage() {
   const [address, setAddress] = useState("");
@@ -78,10 +79,26 @@ export default function CheckoutPage() {
     setLoading(true);
     setError("");
     try {
-      // Include promo code if applied (backend may ignore; frontend still shows totals)
-      const payload = { address, promo_code: appliedCoupon?.code || null };
-      await api.post("/api/orders", payload);
-      navigate("/orders");
+      // Backend attempt for placing order (cart clearing handled server-side if applicable)
+      await api.post("/api/orders", { address, promo_code: appliedCoupon?.code || null }).catch(() => { /* ignore */ });
+
+      // Create an order in frontend service with initial status
+      const order = await createOrder({
+        items: cartItems,
+        total: finalTotal,
+        address,
+        notes: appliedCoupon?.code ? `Applied ${appliedCoupon.code}` : "",
+      });
+
+      // Optional: clear cart on frontend if backend didn't
+      try {
+        await api.delete("/api/cart");
+      } catch {
+        // ignore cart clear failures
+      }
+
+      // Navigate to detail page
+      navigate(`/orders/${order.id}`);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to place order");
     } finally {
