@@ -45,14 +45,6 @@ export default function SmartSuggestions({ location = "cart", limit = 5, onAdded
     const ok = await addOneToCart(productId);
     if (ok) {
       onAdded && onAdded(productId);
-      // Provide lightweight feedback
-      try {
-        if (location === "cart") {
-          // keep in list; user may add multiple
-        }
-      } catch {
-        // ignore
-      }
     } else {
       alert("Failed to add item.");
     }

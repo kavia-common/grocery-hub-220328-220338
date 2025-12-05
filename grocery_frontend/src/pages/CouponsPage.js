@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchCoupons, setAppliedCode } from "../services/couponsService";
+import { useNotifications } from "../notifications/NotificationsContext";
 
 /**
  * PUBLIC_INTERFACE
@@ -11,6 +12,7 @@ export default function CouponsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { notify, NotificationTypes } = useNotifications();
 
   useEffect(() => {
     let active = true;
@@ -31,8 +33,21 @@ export default function CouponsPage() {
     };
   }, []);
 
-  const apply = (code) => {
+  const apply = (code, expired = false) => {
+    if (expired) {
+      notify({
+        type: NotificationTypes.warning,
+        message: `Coupon ${code} is expired.`,
+        meta: { type: "coupon", code, expired: true },
+      });
+      return;
+    }
     setAppliedCode(code);
+    notify({
+      type: NotificationTypes.success,
+      message: `Coupon ${code} applied successfully!`,
+      meta: { type: "coupon", code },
+    });
     navigate(`/cart?code=${encodeURIComponent(code)}`);
   };
 
@@ -89,7 +104,7 @@ export default function CouponsPage() {
               <div>
                 <button
                   className="btn btn-secondary"
-                  onClick={() => apply(c.code)}
+                  onClick={() => apply(c.code, expired)}
                   disabled={expired}
                   title={expired ? "Offer expired" : "Apply coupon"}
                 >

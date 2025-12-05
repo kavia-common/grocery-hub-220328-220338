@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
@@ -14,6 +14,8 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { WishlistProvider } from "./wishlist/WishlistContext";
 import OrderDetailPage from "./pages/OrderDetailPage";
 import InstantPage from "./pages/InstantPage";
+import NotificationBanner from "./components/NotificationBanner";
+import { useNotifications } from "./notifications/NotificationsContext";
 
 /**
  * PUBLIC_INTERFACE
@@ -26,58 +28,81 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function AppShell() {
+  const { notify, NotificationTypes } = useNotifications();
+
+  // Smart suggestions: subtle info on first load with CTA hint
+  useEffect(() => {
+    const key = "gh_suggestions_notified_v1";
+    if (!sessionStorage.getItem(key)) {
+      notify({
+        type: NotificationTypes.info,
+        message: "Smart suggestions ready. Review items tailored for you in the cart.",
+        meta: { cta: "/cart" },
+      });
+      sessionStorage.setItem(key, "1");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="app" style={{ background: "var(--bg)" }}>
+      <Header />
+      <div className="container">
+        <Sidebar />
+        <main className="content">
+          <NotificationBanner />
+          <Routes>
+            <Route path="/" element={<ProductGrid />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route
+              path="/cart"
+              element={
+                <ProtectedRoute>
+                  <CartPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/:orderId"
+              element={
+                <ProtectedRoute>
+                  <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/coupons" element={<CouponsPage />} />
+            <Route path="/instant" element={<InstantPage />} />
+            <Route path="/login" element={<LoginPage />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <WishlistProvider>
-        <div className="app" style={{ background: "var(--bg)" }}>
-          <Header />
-          <div className="container">
-            <Sidebar />
-            <main className="content">
-              <Routes>
-                <Route path="/" element={<ProductGrid />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/wishlist" element={<WishlistPage />} />
-                <Route
-                  path="/cart"
-                  element={
-                    <ProtectedRoute>
-                      <CartPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/checkout"
-                  element={
-                    <ProtectedRoute>
-                      <CheckoutPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders"
-                  element={
-                    <ProtectedRoute>
-                      <OrdersPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders/:orderId"
-                  element={
-                    <ProtectedRoute>
-                      <OrderDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/coupons" element={<CouponsPage />} />
-                <Route path="/instant" element={<InstantPage />} />
-                <Route path="/login" element={<LoginPage />} />
-              </Routes>
-            </main>
-          </div>
-        </div>
+        <AppShell />
       </WishlistProvider>
     </AuthProvider>
   );

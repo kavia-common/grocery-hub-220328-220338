@@ -6,6 +6,7 @@ import { useWishlist } from "../wishlist/WishlistContext";
 import { fetchProductById } from "../services/productByIdService";
 import { isProductsBackendMode, simulateRestock } from "../services/productsService";
 import { isSubscribed, subscribe, unsubscribe, notifyIfRestocked, popNextBanner } from "../services/stockAlertsService";
+import { useNotifications } from "../notifications/NotificationsContext";
 
 /**
  * PUBLIC_INTERFACE
@@ -26,6 +27,7 @@ export default function ProductDetail() {
   const { token } = useAuth();
   const { isFavorite, toggle } = useWishlist();
   const navigate = useNavigate();
+  const { notify, NotificationTypes } = useNotifications();
 
   useEffect(() => {
     let active = true;
@@ -64,7 +66,11 @@ export default function ProductDetail() {
     }
     try {
       await api.post("/api/cart", { product_id: p.id, quantity: qty });
-      alert("Added to cart");
+      await notify({
+        type: NotificationTypes.success,
+        message: `Added ${p.name} x${qty} to cart.`,
+        meta: { type: "cart_add", productId: p.id, qty },
+      });
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to add to cart");
     }
@@ -87,6 +93,11 @@ export default function ProductDetail() {
     await subscribe(p.id);
     setSubscribed(true);
     setBanner("We'll notify you when it's back in stock.");
+    await notify({
+      type: NotificationTypes.info,
+      message: `We'll notify you when ${p.name} is restocked.`,
+      meta: { type: "restock_subscribe", productId: p.id },
+    });
   };
   const onUnsubscribe = async () => {
     await unsubscribe(p.id);

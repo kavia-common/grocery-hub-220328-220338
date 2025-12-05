@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 export default function Header() {
   const [params] = useSearchParams();
@@ -14,18 +15,28 @@ export default function Header() {
   };
 
   return (
-    <header className="header">
-      <div className="brand"><Link to="/">Grocery Hub</Link></div>
+    <header className="header" style={{ borderBottom: "1px solid #e5e7eb", background: "#ffffff" }}>
+      <div className="brand">
+        <Link to="/" style={{ color: "#111827", fontWeight: 700, textDecoration: "none" }}>
+          Grocery Hub
+        </Link>
+      </div>
       <form className="search" onSubmit={onSubmit}>
-        <input className="input" placeholder="Search for apples, milk, bread..." value={q} onChange={(e)=>setQ(e.target.value)} />
+        <input
+          className="input"
+          placeholder="Search for apples, milk, bread..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </form>
-      <nav className="nav">
+      <nav className="nav" style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Link to="/">Home</Link>
         <Link to="/instant" title="Fast Delivery">Instant</Link>
         <Link to="/wishlist">Wishlist</Link>
         <Link to="/coupons">Offers</Link>
         <Link to="/cart">Cart</Link>
         <Link to="/orders">Orders</Link>
+        <NotificationBell />
         {user ? (
           <button className="btn btn-ghost" onClick={logout}>Logout</button>
         ) : (

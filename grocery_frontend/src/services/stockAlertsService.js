@@ -6,6 +6,7 @@
 // to localStorage seamlessly.
 //
 import api from "../api";
+import { pushNotification, NotificationTypes } from "./notificationsService";
 
 const LS_KEY = "stock_alerts_subscriptions_v1";
 const BANNER_QUEUE_KEY = "stock_alerts_banner_queue_v1";
@@ -139,8 +140,14 @@ export async function notifyIfRestocked(product) {
   const id = String(product.id);
   const subs = readSubs();
   if (!subs.has(id)) return; // no-op if not subscribed
-  // Fire a subtle in-app alert via banner queue.
   const name = product.name || "Item";
+  // Push via new NotificationsService
+  await pushNotification({
+    type: NotificationTypes.info,
+    message: `Good news! "${name}" is back in stock.`,
+    meta: { type: "restock", productId: id },
+  });
+  // Keep existing banner queue for backward compatibility
   pushBanner(`Good news! "${name}" is back in stock.`);
   // Clear subscription
   subs.delete(id);
