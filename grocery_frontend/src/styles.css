@@ -83,3 +83,6 @@ a{ color: inherit; text-decoration: none; }
 
 /* Order tracking stepper helper for consistency (container already inline-styled) */
 .order-stepper .small{ font-size: 11px; }
+
+/* Additional badge variant used by payments */
+.badge.warn{ background:#FEF3C7; color:#92400E; }

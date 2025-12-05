@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import OrderTrackingStepper from "../components/OrderTrackingStepper";
-import { advanceStatus, getOrder, isBackendMode } from "../services/orderService";
+import { advanceStatus, getOrder, isBackendMode, paymentSummaryShort } from "../services/orderService";
 import BuyAgain from "../components/BuyAgain";
 import { useNotifications } from "../notifications/NotificationsContext";
 import api from "../api";
@@ -151,6 +151,13 @@ export default function OrderDetailPage() {
       </div>
 
       <BuyAgain limit={6} />
+
+      {order.payment ? (
+        <div className="card" style={{ marginTop: 12 }}>
+          <strong>Payment</strong>
+          <div className="small" style={{ marginTop: 6 }}>{paymentSummaryShort(order.payment)}</div>
+        </div>
+      ) : null}
 
       {(order.shippingAddress || order.address) ? (
         <div className="card" style={{ marginTop: 12 }}>

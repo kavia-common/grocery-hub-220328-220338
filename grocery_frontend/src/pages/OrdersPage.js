@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { getOrders } from "../services/orderService";
+import { getOrders, paymentSummaryShort } from "../services/orderService";
 import api from "../api";
 import BuyAgain from "../components/BuyAgain";
 import { useNotifications } from "../notifications/NotificationsContext";
@@ -75,6 +75,7 @@ export default function OrdersPage() {
               </div>
               <div className="row" style={{ gap: 8 }}>
                 <span className="badge">Status: {o.status}</span>
+                {o.payment ? <span className="badge" title="Payment Method">{paymentSummaryShort(o.payment)}</span> : null}
                 <button
                   onClick={() => reorderOrder(o)}
                   className="btn btn-primary"

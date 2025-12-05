@@ -10,6 +10,8 @@ import {
 import { createOrder } from "../services/orderService";
 import AddressSelector from "../components/AddressSelector";
 import { useAddress } from "../addresses/AddressContext";
+import PaymentMethodSelector from "../components/PaymentMethodSelector";
+import { useNotifications } from "../notifications/NotificationsContext";
 
 export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
@@ -20,6 +22,10 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const navigate = useNavigate();
   const { selectedAddress } = useAddress();
+  const { notify, NotificationTypes } = useNotifications();
+  const [paymentValid, setPaymentValid] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState(null);
 
   useEffect(() => {
     // load cart for totals preview
@@ -27,6 +33,13 @@ export default function CheckoutPage() {
       .get("/api/cart")
       .then((res) => setCartItems(res.data || []))
       .catch(() => setCartItems([]));
+  }, []);
+
+  useEffect(() => {
+    try {
+      const last = localStorage.getItem("lastSelectedPaymentMethod");
+      if (last) setInitialPaymentMethod(last);
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -79,6 +92,10 @@ export default function CheckoutPage() {
   const finalTotal = totalAfterDiscount + shipping + tax;
 
   const placeOrder = async () => {
+    if (!paymentValid || !paymentData) {
+      notify({ type: NotificationTypes.warning, message: "Please validate a payment method first" });
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -87,6 +104,7 @@ export default function CheckoutPage() {
         .post("/api/orders", {
           address: selectedAddress ? `${selectedAddress.line1}, ${selectedAddress.city}` : "",
           promo_code: appliedCoupon?.code || null,
+          payment: paymentData,
         })
         .catch(() => { /* ignore backend errors for mock-first */ });
 
@@ -106,6 +124,7 @@ export default function CheckoutPage() {
           state: selectedAddress.state,
           zip: selectedAddress.zip,
         } : null,
+        payment: paymentData,
       });
 
       // Optional: clear cart on frontend if backend didn't
@@ -115,6 +134,7 @@ export default function CheckoutPage() {
         // ignore cart clear failures
       }
 
+      notify({ type: NotificationTypes.success, message: "Order placed successfully" });
       navigate(`/orders/${order.id}`);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to place order");
@@ -170,6 +190,13 @@ export default function CheckoutPage() {
         ) : null}
       </div>
 
+      {/* Payments */}
+      <PaymentMethodSelector
+        onValidityChange={setPaymentValid}
+        onChange={setPaymentData}
+        initialMethod={initialPaymentMethod}
+      />
+
       {/* Totals */}
       <div className="card" style={{ marginTop: 12 }}>
         <div className="row" style={{ justifyContent: "space-between" }}>
@@ -203,7 +230,12 @@ export default function CheckoutPage() {
           Back to Cart
         </button>
         <div className="spacer" />
-        <button className="btn btn-primary" onClick={placeOrder} disabled={loading}>
+        <button
+          className="btn btn-primary"
+          onClick={placeOrder}
+          disabled={loading || !paymentValid}
+          title={!paymentValid ? "Validate a payment method to continue" : "Place Order"}
+        >
           {loading ? "Placing..." : "Place Order"}
         </button>
       </div>

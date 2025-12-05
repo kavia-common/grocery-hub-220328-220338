@@ -51,6 +51,33 @@ function normalizeOrderItems(items) {
   }));
 }
 
+export function maskUpi(upiId) {
+  if (!upiId) return "";
+  const parts = String(upiId).split("@");
+  if (parts.length !== 2) return upiId;
+  const local = parts[0];
+  const domain = parts[1];
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(0, local.length - visible.length))}@${domain}`;
+}
+
+export function paymentSummaryShort(payment) {
+  if (!payment) return "";
+  const method = payment.method || "COD";
+  const m = payment.meta || {};
+  if (method === "UPI") {
+    return `UPI • ${m.masked || maskUpi(m.upiId || "")}`;
+  }
+  if (method === "CARD") {
+    const last4 = m.cardLast4 || "";
+    return `Card • •••• ${last4}`;
+  }
+  if (method === "WALLET") {
+    return `Wallet • ${m.walletProvider || "—"}`;
+  }
+  return "Cash on Delivery";
+}
+
 function normalizeOrder(o) {
   if (!o) return null;
   const created = o.created_at || o.createdAt || new Date().toISOString();
@@ -67,6 +94,7 @@ function normalizeOrder(o) {
     address: o.address || "",
     shippingAddress: o.shippingAddress || null,
     notes: o.notes || "",
+    payment: o.payment || null,
     timestamps: o.timestamps || {},
   };
 }
@@ -217,8 +245,30 @@ export async function isBackendMode() {
  * createOrder creates a new order snapshot (mock-first). If backend is available, it attempts
  * to create via backend and returns the normalized order. Otherwise stores to mock with new id.
  */
-export async function createOrder({ items = [], total = 0, address = "", notes = "", shippingAddress = null }) {
+export async function createOrder({ items = [], total = 0, address = "", notes = "", shippingAddress = null, payment = null }) {
   const now = new Date().toISOString();
+
+  // Only keep safe payment meta for mock mode (avoid sensitive fields)
+  const safePayment = (() => {
+    if (!payment || typeof payment !== "object") return null;
+    const method = payment.method || "COD";
+    const meta = payment.meta || {};
+    if (method === "CARD") {
+      // store only last4 and non-sensitive meta
+      const last4 = meta.cardLast4 || String(meta.last4 || "").slice(-4);
+      return { method, meta: { cardLast4: last4 || "", nameOnCard: meta.nameOnCard || "", expiry: meta.expiry || "" } };
+    }
+    if (method === "UPI") {
+      const upiId = meta.upiId || "";
+      const masked = maskUpi(upiId);
+      return { method, meta: { upiId, masked, upiName: meta.upiName || "" } };
+    }
+    if (method === "WALLET") {
+      return { method, meta: { walletProvider: meta.walletProvider || "" } };
+    }
+    return { method: "COD", meta: {} };
+  })();
+
   const payload = {
     status: "PLACED",
     created_at: now,
@@ -229,6 +279,7 @@ export async function createOrder({ items = [], total = 0, address = "", notes =
     address: address || "",
     shippingAddress: shippingAddress || null,
     notes: notes || "",
+    payment: safePayment, // include on mock and pass to backend (if supported)
     timestamps: {
       PLACED: now,
       PACKED: null,
@@ -241,7 +292,7 @@ export async function createOrder({ items = [], total = 0, address = "", notes =
   if (useBackend) {
     try {
       const res = await api.post("/api/orders", payload);
-      return normalizeOrder(res.data);
+      return normalizeOrder({ ...res.data, payment: payload.payment });
     } catch {
       // fall back to mock
     }
