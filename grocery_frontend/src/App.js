@@ -9,6 +9,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
 import LoginPage from "./pages/LoginPage";
 import WishlistPage from "./pages/WishlistPage";
+import CouponsPage from "./pages/CouponsPage";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { WishlistProvider } from "./wishlist/WishlistContext";
 
@@ -63,6 +64,7 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/coupons" element={<CouponsPage />} />
                 <Route path="/login" element={<LoginPage />} />
               </Routes>
             </main>

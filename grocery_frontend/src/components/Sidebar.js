@@ -18,6 +18,11 @@ export default function Sidebar(){
         {cats.map(c => (
           <Link key={c} to={`/?category=${encodeURIComponent(c)}`}>{c}</Link>
         ))}
+        <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 8, paddingTop: 8 }}>
+          <Link to="/coupons" className="row" style={{ gap: 6 }}>
+            <span className="badge">Offers</span> Browse coupons
+          </Link>
+        </div>
       </div>
     </aside>
   );

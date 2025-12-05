@@ -6,10 +6,10 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
  */
 const WishlistContext = createContext({
   favorites: new Set(),
-  isFavorite: (_id) => false,
-  toggle: (_id) => {},
-  add: (_id) => {},
-  remove: (_id) => {},
+  isFavorite: () => false,
+  toggle: () => {},
+  add: () => {},
+  remove: () => {},
   clear: () => {},
 });
 
