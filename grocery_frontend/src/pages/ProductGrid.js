@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
-import { fetchProducts, fetchInstantProducts } from "../services/productsService";
+import { fetchProducts, fetchInstantProducts, getFeaturedOrganic } from "../services/productsService";
 import { isSubscribed, subscribe, unsubscribe, popNextBanner } from "../services/stockAlertsService";
 import { useWishlist } from "../wishlist/WishlistContext";
 import SmartSuggestions from "../components/SmartSuggestions";
@@ -17,6 +17,7 @@ export default function ProductGrid() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [quick, setQuick] = useState([]);
+  const [organic, setOrganic] = useState([]);
   const loc = useLocation();
   const params = new URLSearchParams(loc.search);
   const search = params.get("search") || "";
@@ -27,7 +28,6 @@ export default function ProductGrid() {
   const { isFavorite, toggle } = useWishlist();
   const navigate = useNavigate();
   const [topCombos, setTopCombos] = useState([]);
-  const [priceAlertSubs, setPriceAlertSubs] = useState(new Set());
   const pricePollRef = useRef(null);
   const { notify, NotificationTypes } = useNotifications();
   const [memberPerks, setMemberPerks] = useState({ freeDelivery: false, extraDiscountPercent: 0, earlyAccess: false });
@@ -50,8 +50,12 @@ export default function ProductGrid() {
             .catch(() => {
               if (active) setQuick([]);
             });
+          getFeaturedOrganic(6).then((o) => {
+            if (active) setOrganic(o || []);
+          }).catch(()=>{ if (active) setOrganic([]); });
         } else if (active) {
           setQuick([]);
+          setOrganic([]);
         }
       } catch (e) {
         if (active) setError(e?.response?.data?.message || "Failed to load products");
@@ -79,18 +83,6 @@ export default function ProductGrid() {
           const s = new Set();
           ids.forEach(([id, v]) => v && s.add(Number(id)));
           setSubs(s);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-
-    // Initialize price alert subscriptions set from localStorage for quick UI reflection
-    (async () => {
-      try {
-        const all = JSON.parse(localStorage.getItem('ghub_price_alert_subscriptions') || '[]');
-        if (active && Array.isArray(all)) {
-          setPriceAlertSubs(new Set(all.map(Number)));
         }
       } catch {
         // ignore
@@ -198,6 +190,42 @@ export default function ProductGrid() {
         </div>
       ) : null}
 
+      {organic.length > 0 ? (
+        <div className="card" style={{ marginBottom: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.08), #ffffff)", border: "1px solid rgba(16,185,129,0.25)" }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <strong>Organic Picks</strong>
+              <span className="badge" style={{ background: "rgba(16,185,129,0.12)", color: "#065F46", border: "1px solid #10B981" }}>Organic</span>
+            </div>
+            <Link to="/organic" className="btn btn-ghost">See all</Link>
+          </div>
+          <div className="grid" style={{ marginTop: 10 }}>
+            {organic.map((p) => (
+              <div key={p.id} className="card product-card" style={{ position: "relative" }}>
+                {p.isOrganic ? (
+                  <div style={{ position: "absolute", top: 10, left: 10 }}>
+                    <span style={{ backgroundColor: "rgba(16,185,129,0.10)", color: "#059669", border: "1px solid #10B981", fontSize: 12, padding: "2px 6px", borderRadius: 6 }}>
+                      Organic
+                    </span>
+                  </div>
+                ) : null}
+                <Link to={`/product/${p.id}`}>
+                  <img alt={p.name} src={p.image_url || "https://via.placeholder.com/400x300?text=Grocery"} />
+                </Link>
+                <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+                  <div>
+                    <Link to={`/product/${p.id}`}><strong>{p.name}</strong></Link>
+                    <div className="small">{p.category}</div>
+                    {p.organicCert ? <div className="small" style={{ color: "#065F46" }}>{p.organicCert}</div> : null}
+                  </div>
+                  <div><strong>${Number(p.price || 0).toFixed(2)}</strong></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {topCombos.length > 0 ? (
         <div className="card" style={{ marginBottom: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.10), #ffffff)", border: "1px solid #FDE68A" }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -236,20 +264,15 @@ export default function ProductGrid() {
 
       {token ? (
         <div style={{ marginBottom: 12 }}>
-          {/* Buy Again section */}
           <BuyAgain limit={6} />
-          {/* Smart Suggestions */}
           <SmartSuggestions
             location="grid"
             limit={4}
-            onAdded={() => {
-              // cart update happens server-side; no reload needed
-            }}
+            onAdded={() => {}}
           />
         </div>
       ) : null}
 
-      {/* Quick Delivery section */}
       {quick.length > 0 ? (
         <div className="card" style={{ marginBottom: 12, background: "linear-gradient(135deg, rgba(37,99,235,0.06), #ffffff)" }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -288,36 +311,18 @@ export default function ProductGrid() {
       ) : null}
 
       <div className="grid">
-        {items
-          .filter((p) => {
-            // If earlyAccessOnly, show only to members with earlyAccess perk
-            if (p.earlyAccessOnly && !memberPerks.earlyAccess) {
-              // still render with lock? We'll allow showing locked with badge, not filter out from grid.
-              return true;
-            }
-            return true;
-          })
-          .map((p) => {
+        {items.map((p) => {
           const hasDiscount = p.isDiscounted || (typeof p.discountPercent === "number" && p.discountPercent > 0);
-          const weightOrQuality = p.weight || p.quality || "";
+          const weightOrQuality = p.weight || p.quality || p.weightOrQuality || "";
           const inStock = typeof p.stockQty === "number" ? p.stockQty > 0 : (typeof p.isInStock === "boolean" ? p.isInStock : true);
           const subscribed = subs.has(Number(p.id));
           return (
             <div key={p.id} className={`card product-card ${p.isInstant ? "instant-card" : ""}`} style={{ position: "relative" }}>
-              {p.earlyAccessOnly && !memberPerks.earlyAccess ? (
-                <div
-                  className="badge"
-                  aria-label="Locked Early Access"
-                  title="Members get early access"
-                  style={{
-                    position: "absolute",
-                    top: 10,
-                    left: 10,
-                    background: "#FEE2E2",
-                    color: "#991B1B",
-                  }}
-                >
-                  🔒 Early Access
+              {p.isOrganic ? (
+                <div style={{ position: "absolute", top: 10, left: 10 }}>
+                  <span style={{ backgroundColor: "rgba(16,185,129,0.10)", color: "#059669", border: "1px solid #10B981", fontSize: 12, padding: "2px 6px", borderRadius: 6 }}>
+                    Organic
+                  </span>
                 </div>
               ) : null}
               {hasDiscount ? (
@@ -328,7 +333,7 @@ export default function ProductGrid() {
                   style={{
                     position: "absolute",
                     top: 10,
-                    left: 10,
+                    left: 90,
                     background: "linear-gradient(135deg, var(--secondary), #fcd34d)",
                     color: "#111827",
                     fontWeight: 700,
@@ -343,48 +348,6 @@ export default function ProductGrid() {
                     : "Deal"}
                 </div>
               ) : null}
-              {typeof p.stockQty === "number" ? (
-                inStock ? (
-                  <div
-                    className="badge"
-                    title={`${p.stockQty} in stock`}
-                    style={{
-                      position: "absolute",
-                      top: 10,
-                      left: 90,
-                      background: "#DBEAFE",
-                      color: "#1E40AF",
-                    }}
-                  >
-                    In stock • {p.stockQty}
-                  </div>
-                ) : (
-                  <div
-                    className="badge"
-                    title="Out of stock"
-                    style={{
-                      position: "absolute",
-                      top: 10,
-                      left: 90,
-                      background: "#FEE2E2",
-                      color: "#991B1B",
-                    }}
-                  >
-                    Out of stock
-                  </div>
-                )
-              ) : null}
-              {p.isInstant ? (
-                <div
-                  className="badge-instant"
-                  aria-label="instant delivery"
-                  title="Instant Delivery"
-                  style={{ position: "absolute", top: 10, right: 50 }}
-                >
-                  Instant Delivery{p.instantEta ? ` • ${p.instantEta}` : ""}
-                </div>
-              ) : null}
-
               <button
                 aria-label={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
                 title={isFavorite(p.id) ? "Remove from wishlist" : "Add to wishlist"}
@@ -423,14 +386,12 @@ export default function ProductGrid() {
                       {weightOrQuality}
                     </div>
                   ) : null}
+                  {p.organicCert ? (
+                    <div className="small" style={{ color: "#065F46" }}>{p.organicCert}</div>
+                  ) : null}
                 </div>
                 <div>
                   <strong>${Number(p.price || 0).toFixed(2)}</strong>
-                  {hasDiscount && typeof p.discountPercent === "number" && p.discountPercent > 0 ? (
-                    <div className="small" style={{ color: "#059669" }}>
-                      Save {p.discountPercent}%
-                    </div>
-                  ) : null}
                 </div>
               </div>
 
@@ -452,35 +413,6 @@ export default function ProductGrid() {
                     </button>
                   )
                 ) : null}
-                {/* Price drop alert toggle */}
-                <button
-                  className="btn btn-ghost"
-                  aria-label="Price drop alert"
-                  title="Notify me on price drop"
-                  onClick={() => {
-                    const active = priceAlertService.isSubscribed(p.id);
-                    if (active) {
-                      priceAlertService.unsubscribe(p.id);
-                      setPriceAlertSubs((prev)=>{ const s=new Set(prev); s.delete(Number(p.id)); return s; });
-                      notify?.({ type: NotificationTypes.success, message: 'Price alerts disabled for this item.', meta: { type: 'price_alert_unsub', productId: p.id } });
-                    } else {
-                      priceAlertService.subscribe(p.id);
-                      setPriceAlertSubs((prev)=>{ const s=new Set(prev); s.add(Number(p.id)); return s; });
-                      notify?.({ type: NotificationTypes.success, message: 'Price alerts enabled. We\'ll notify you on drops or higher discounts.', meta: { type: 'price_alert_sub', productId: p.id } });
-                      // Light check now
-                      priceAlertService.checkForPriceDrops([p], ({ title, message, cta, ctaHref }) => {
-                        notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
-                      }).catch(()=>{});
-                    }
-                  }}
-                  style={{
-                    border: `1px solid ${priceAlertSubs.has(Number(p.id)) ? '#2563EB' : '#e5e7eb'}`,
-                    background: priceAlertSubs.has(Number(p.id)) ? 'rgba(37,99,235,0.08)' : '#ffffff',
-                    color: priceAlertSubs.has(Number(p.id)) ? '#2563EB' : '#6b7280',
-                  }}
-                >
-                  <span aria-hidden="true">🔔</span> {priceAlertSubs.has(Number(p.id)) ? 'Alert on' : 'Alert me'}
-                </button>
                 <div className="spacer" />
                 <Link className="btn btn-ghost" to={`/product/${p.id}`}>
                   View

@@ -24,6 +24,7 @@ import ComboDetailPage from "./pages/ComboDetailPage";
 import ImageSearchPage from "./pages/ImageSearchPage";
 import MembershipsPage from "./pages/MembershipsPage";
 import ReturnsPage from "./pages/ReturnsPage";
+import OrganicPage from "./pages/OrganicPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -120,6 +121,8 @@ function AppShell() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/organic" element={<OrganicPage />} />
+            <Route path="/organic/:tab" element={<OrganicPage />} />
           </Routes>
         </main>
       </div>

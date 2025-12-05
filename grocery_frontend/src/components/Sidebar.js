@@ -19,6 +19,9 @@ export default function Sidebar(){
           <Link key={c} to={`/?category=${encodeURIComponent(c)}`}>{c}</Link>
         ))}
         <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 8, paddingTop: 8 }}>
+          <Link to="/organic" className="row" style={{ gap: 6 }}>
+            <span className="badge" style={{ background: "rgba(16,185,129,0.12)", color: "#065F46", border: "1px solid #10B981" }}>Organic</span> Shop organic
+          </Link>
           <Link to="/combos" className="row" style={{ gap: 6 }}>
             <span className="badge" style={{ background: "#FEF3C7", color: "#B45309" }}>Combos</span> Save more
           </Link>

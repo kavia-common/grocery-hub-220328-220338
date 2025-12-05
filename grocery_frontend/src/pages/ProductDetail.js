@@ -11,10 +11,7 @@ import { useNotifications } from "../notifications/NotificationsContext";
 
 /**
  * PUBLIC_INTERFACE
- * ProductDetail shows a single product with prominent image and price.
- * Assumes backend returns: { id, name, description, category, image_url, price }
- * Enhancements: wishlist heart toggle (localStorage-backed), Quick Buy (adds 1 to cart, navigates to checkout),
- * and Instant Delivery badge with optional ETA when p.isInstant is true.
+ * ProductDetail shows a single product with image, price, organic badge/cert, and actions.
  */
 export default function ProductDetail() {
   const { id } = useParams();
@@ -41,10 +38,8 @@ export default function ProductDetail() {
       try {
         const data = await fetchProductById(id);
         if (active) setP(data);
-        // subscription state
         const sub = await isSubscribed(id);
         if (active) setSubscribed(!!sub);
-        // detect mode
         const mode = await isProductsBackendMode();
         if (active) setBackendMode(!!mode);
       } catch (e) {
@@ -58,7 +53,6 @@ export default function ProductDetail() {
       if (msg) setBanner(msg);
     }, 1200);
 
-    // Initialize price alert toggle and preferences
     (async () => {
       try {
         const pid = Number(id);
@@ -69,7 +63,6 @@ export default function ProductDetail() {
       }
     })();
 
-    // Initial check and poll every 2 minutes for this item
     (async () => {
       try {
         if (p) {
@@ -77,16 +70,14 @@ export default function ProductDetail() {
             notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
           });
         }
-      } catch {
-        // ignore
-      }
+      } catch { }
     })();
 
     pricePollRef.current = setInterval(() => {
       if (!p) return;
       priceAlertService.checkForPriceDrops([p], ({ title, message, cta, ctaHref }) => {
         notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
-      }).catch(() => {});
+      }).catch(() => { });
     }, 120000);
 
     return () => {
@@ -141,7 +132,6 @@ export default function ProductDetail() {
     setSubscribed(false);
   };
 
-  // Mock-only helper to simulate restock event and fire a notification
   const simulateRestockNow = async () => {
     if (!p) return;
     const prevQty = Number(p.stockQty || 0);
@@ -151,7 +141,6 @@ export default function ProductDetail() {
     }
     const updatedList = simulateRestock([p], p.id, 20);
     const updated = updatedList[0];
-    // Notify subscribers and update UI
     await notifyIfRestocked(updated);
     setP(updated);
   };
@@ -161,8 +150,18 @@ export default function ProductDetail() {
   if (!p) return null;
 
   const imgSrc = p.image_url || "https://via.placeholder.com/800x600?text=Grocery";
-
   const inStock = typeof p.stockQty === "number" ? p.stockQty > 0 : (typeof p.isInStock === "boolean" ? p.isInStock : true);
+
+  const organicBadge = p.isOrganic ? (
+    <span style={{ backgroundColor: "rgba(16,185,129,0.10)", color: "#059669", border: "1px solid #10B981", fontSize: 12, padding: "2px 6px", borderRadius: 6, marginLeft: 8 }}>
+      Organic
+    </span>
+  ) : null;
+  const organicCert = p.organicCert ? (
+    <span style={{ color: "#065F46", fontSize: 12, marginLeft: 6 }}>
+      {p.organicCert}
+    </span>
+  ) : null;
 
   return (
     <div className="card" style={{ padding: 16 }}>
@@ -249,7 +248,11 @@ export default function ProductDetail() {
         <div style={{ flex: "1 1 360px", minWidth: 280 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <h2 style={{ margin: 0 }}>{p.name}</h2>
+              <h2 style={{ margin: 0, display: "flex", alignItems: "center" }}>
+                {p.name}
+                {organicBadge}
+                {organicCert}
+              </h2>
               <div className="row" style={{ marginTop: 6, gap: 6, alignItems: "center" }}>
                 {p.category ? <div className="badge">{p.category}</div> : null}
                 {p.isInstant ? (
@@ -337,7 +340,6 @@ export default function ProductDetail() {
               )
             ) : null}
 
-            {/* Price drop alert toggle (always available) */}
             <button
               className="btn btn-ghost"
               aria-label="Price drop alert"
@@ -352,7 +354,6 @@ export default function ProductDetail() {
                   priceAlertService.subscribe(pid);
                   setPriceAlertOn(true);
                   notify?.({ type: NotificationTypes.success, message: 'Price alerts enabled. We\'ll notify you on drops or higher discounts.', meta: { type: 'price_alert_sub', productId: pid } });
-                  // run a light check
                   priceAlertService.checkForPriceDrops([p], ({ title, message, cta, ctaHref }) => {
                     notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
                   }).catch(()=>{});
@@ -379,7 +380,6 @@ export default function ProductDetail() {
             ) : null}
           </div>
 
-          {/* Preferences panel for price alerts */}
           <div className="card" style={{ marginTop: 12 }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Alert preferences</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>

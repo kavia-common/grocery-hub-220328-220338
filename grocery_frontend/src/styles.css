@@ -1,14 +1,4 @@
-/*
-  NOTE:
-  CSS files are not processed with JavaScript at build time, so expressions like
-  ${process.env.VAR} are invalid CSS and cause the build to fail. If you need to
-  theme via environment variables, inject a <style> block at runtime or map
-  env values to CSS variables in JS (e.g., in index.js) by setting
-  document.documentElement.style.setProperty('--primary', value).
-*/
-
 :root{
-  /* Static defaults; can be overridden at runtime via JS if needed */
   --primary: #2563EB;
   --secondary: #F59E0B;
   --error: #EF4444;
@@ -47,7 +37,7 @@ input.input:focus{ box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
 .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 .product-card img{ width:100%; height:140px; object-fit: cover; border-radius: 8px; background: #f3f4f6; }
 .product-card .btn-ghost:hover{ background:#f9fafb; }
-/* Product Detail page enhancements */
+
 @media (max-width: 768px){
   .product-media img{ height:220px !important; }
 }
@@ -55,7 +45,6 @@ input.input:focus{ box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
 .badge.error{ background:#FEE2E2; color:#991B1B; }
 .badge.ok{ background:#DBEAFE; color:#1E40AF; }
 .discount-badge{ user-select: none; }
-/* Instant delivery badge */
 .badge-instant{
   background: linear-gradient(135deg, rgba(37,99,235,0.12), #FEF3C7);
   color: #1E3A8A;
@@ -81,7 +70,14 @@ a{ color: inherit; text-decoration: none; }
 .small{ font-size: 12px; color: #6b7280; }
 .error{ color: var(--error); }
 
-/* Order tracking stepper helper for consistency (container already inline-styled) */
+/* Tabs for Organic page */
+.tabs .tab { background: #ffffff; border: 1px solid #e5e7eb; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.tabs .tab.active { border-color: #2563EB; color: #2563EB; box-shadow: 0 1px 2px rgba(37,99,235,0.15); }
+
+/* Organic badge utility */
+.org-badge { background-color: rgba(16,185,129,0.1); color: #059669; border: 1px solid #10B981; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+
+/* Order tracking stepper helper */
 .order-stepper .small{ font-size: 11px; }
 
 /* Additional badge variant used by payments */
