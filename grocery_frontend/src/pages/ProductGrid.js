@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
@@ -8,6 +8,8 @@ import { useWishlist } from "../wishlist/WishlistContext";
 import SmartSuggestions from "../components/SmartSuggestions";
 import BuyAgain from "../components/BuyAgain";
 import { listCombos } from "../services/combosService";
+import priceAlertService from "../services/priceAlertService";
+import { useNotifications } from "../notifications/NotificationsContext";
 
 export default function ProductGrid() {
   const [loading, setLoading] = useState(true);
@@ -24,6 +26,9 @@ export default function ProductGrid() {
   const { isFavorite, toggle } = useWishlist();
   const navigate = useNavigate();
   const [topCombos, setTopCombos] = useState([]);
+  const [priceAlertSubs, setPriceAlertSubs] = useState(new Set());
+  const pricePollRef = useRef(null);
+  const { notify, NotificationTypes } = useNotifications();
 
   useEffect(() => {
     let active = true;
@@ -76,13 +81,48 @@ export default function ProductGrid() {
       }
     })();
 
-    const t = setInterval(() => {
+    // Initialize price alert subscriptions set from localStorage for quick UI reflection
+    (async () => {
+      try {
+        const all = JSON.parse(localStorage.getItem('ghub_price_alert_subscriptions') || '[]');
+        if (active && Array.isArray(all)) {
+          setPriceAlertSubs(new Set(all.map(Number)));
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    // Initial check for price drops using the loaded list
+    (async () => {
+      try {
+        if (items && items.length > 0) {
+          await priceAlertService.checkForPriceDrops(items, ({ title, message, cta, ctaHref }) => {
+            notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
+          });
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    const bannerTimer = setInterval(() => {
       const msg = popNextBanner();
       if (msg) setBanner(msg);
     }, 1200);
+
+    // Poll every 3 minutes for price changes on the current products
+    pricePollRef.current = setInterval(() => {
+      if (!items || items.length === 0) return;
+      priceAlertService.checkForPriceDrops(items, ({ title, message, cta, ctaHref }) => {
+        notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
+      }).catch(() => {});
+    }, 180000);
+
     return () => {
       active = false;
-      clearInterval(t);
+      clearInterval(bannerTimer);
+      if (pricePollRef.current) clearInterval(pricePollRef.current);
     };
   }, [search, category]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -383,6 +423,35 @@ export default function ProductGrid() {
                     </button>
                   )
                 ) : null}
+                {/* Price drop alert toggle */}
+                <button
+                  className="btn btn-ghost"
+                  aria-label="Price drop alert"
+                  title="Notify me on price drop"
+                  onClick={() => {
+                    const active = priceAlertService.isSubscribed(p.id);
+                    if (active) {
+                      priceAlertService.unsubscribe(p.id);
+                      setPriceAlertSubs((prev)=>{ const s=new Set(prev); s.delete(Number(p.id)); return s; });
+                      notify?.({ type: NotificationTypes.success, message: 'Price alerts disabled for this item.', meta: { type: 'price_alert_unsub', productId: p.id } });
+                    } else {
+                      priceAlertService.subscribe(p.id);
+                      setPriceAlertSubs((prev)=>{ const s=new Set(prev); s.add(Number(p.id)); return s; });
+                      notify?.({ type: NotificationTypes.success, message: 'Price alerts enabled. We\'ll notify you on drops or higher discounts.', meta: { type: 'price_alert_sub', productId: p.id } });
+                      // Light check now
+                      priceAlertService.checkForPriceDrops([p], ({ title, message, cta, ctaHref }) => {
+                        notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
+                      }).catch(()=>{});
+                    }
+                  }}
+                  style={{
+                    border: `1px solid ${priceAlertSubs.has(Number(p.id)) ? '#2563EB' : '#e5e7eb'}`,
+                    background: priceAlertSubs.has(Number(p.id)) ? 'rgba(37,99,235,0.08)' : '#ffffff',
+                    color: priceAlertSubs.has(Number(p.id)) ? '#2563EB' : '#6b7280',
+                  }}
+                >
+                  <span aria-hidden="true">🔔</span> {priceAlertSubs.has(Number(p.id)) ? 'Alert on' : 'Alert me'}
+                </button>
                 <div className="spacer" />
                 <Link className="btn btn-ghost" to={`/product/${p.id}`}>
                   View

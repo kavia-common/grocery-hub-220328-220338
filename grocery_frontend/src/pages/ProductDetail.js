@@ -6,6 +6,7 @@ import { useWishlist } from "../wishlist/WishlistContext";
 import { fetchProductById } from "../services/productByIdService";
 import { isProductsBackendMode, simulateRestock } from "../services/productsService";
 import { isSubscribed, subscribe, unsubscribe, notifyIfRestocked, popNextBanner } from "../services/stockAlertsService";
+import priceAlertService from "../services/priceAlertService";
 import { useNotifications } from "../notifications/NotificationsContext";
 
 /**
@@ -28,6 +29,9 @@ export default function ProductDetail() {
   const { isFavorite, toggle } = useWishlist();
   const navigate = useNavigate();
   const { notify, NotificationTypes } = useNotifications();
+  const [priceAlertOn, setPriceAlertOn] = useState(false);
+  const [alertPrefs, setAlertPrefs] = useState({ priceDrop: true, discountIncrease: true });
+  const pricePollRef = React.useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -53,9 +57,42 @@ export default function ProductDetail() {
       const msg = popNextBanner();
       if (msg) setBanner(msg);
     }, 1200);
+
+    // Initialize price alert toggle and preferences
+    (async () => {
+      try {
+        const pid = Number(id);
+        setPriceAlertOn(priceAlertService.isSubscribed(pid));
+        setAlertPrefs(priceAlertService.getAlertPreferences(pid));
+      } catch {
+        // ignore
+      }
+    })();
+
+    // Initial check and poll every 2 minutes for this item
+    (async () => {
+      try {
+        if (p) {
+          await priceAlertService.checkForPriceDrops([p], ({ title, message, cta, ctaHref }) => {
+            notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
+          });
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    pricePollRef.current = setInterval(() => {
+      if (!p) return;
+      priceAlertService.checkForPriceDrops([p], ({ title, message, cta, ctaHref }) => {
+        notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
+      }).catch(() => {});
+    }, 120000);
+
     return () => {
       active = false;
       clearInterval(t);
+      if (pricePollRef.current) clearInterval(pricePollRef.current);
     };
   }, [id]);
 
@@ -299,6 +336,37 @@ export default function ProductDetail() {
                 </button>
               )
             ) : null}
+
+            {/* Price drop alert toggle (always available) */}
+            <button
+              className="btn btn-ghost"
+              aria-label="Price drop alert"
+              title="Notify me on price drop"
+              onClick={() => {
+                const pid = Number(id);
+                if (priceAlertOn) {
+                  priceAlertService.unsubscribe(pid);
+                  setPriceAlertOn(false);
+                  notify?.({ type: NotificationTypes.success, message: 'Price alerts disabled for this item.', meta: { type: 'price_alert_unsub', productId: pid } });
+                } else {
+                  priceAlertService.subscribe(pid);
+                  setPriceAlertOn(true);
+                  notify?.({ type: NotificationTypes.success, message: 'Price alerts enabled. We\'ll notify you on drops or higher discounts.', meta: { type: 'price_alert_sub', productId: pid } });
+                  // run a light check
+                  priceAlertService.checkForPriceDrops([p], ({ title, message, cta, ctaHref }) => {
+                    notify?.({ type: NotificationTypes.info, message: `${title}: ${message}`, meta: { cta, ctaHref, type: 'price_drop' } });
+                  }).catch(()=>{});
+                }
+              }}
+              style={{
+                border: `1px solid ${priceAlertOn ? '#2563EB' : '#e5e7eb'}`,
+                background: priceAlertOn ? 'rgba(37,99,235,0.08)' : '#ffffff',
+                color: priceAlertOn ? '#2563EB' : '#6b7280',
+              }}
+            >
+              <span aria-hidden="true">🔔</span> {priceAlertOn ? 'Alert on' : 'Alert me'}
+            </button>
+
             {!backendMode && !inStock ? (
               <button
                 className="btn"
@@ -309,6 +377,37 @@ export default function ProductDetail() {
                 Simulate restock
               </button>
             ) : null}
+          </div>
+
+          {/* Preferences panel for price alerts */}
+          <div className="card" style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Alert preferences</div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <input
+                type="checkbox"
+                checked={!!alertPrefs.priceDrop}
+                onChange={(e) => {
+                  const next = { ...alertPrefs, priceDrop: e.target.checked };
+                  setAlertPrefs(next);
+                  priceAlertService.setAlertPreferences(Number(id), next);
+                  notify?.({ type: NotificationTypes.success, message: 'Price drop preference updated', meta: { type: 'price_alert_pref' } });
+                }}
+              />
+              <span>Notify me when the price drops</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!alertPrefs.discountIncrease}
+                onChange={(e) => {
+                  const next = { ...alertPrefs, discountIncrease: e.target.checked };
+                  setAlertPrefs(next);
+                  priceAlertService.setAlertPreferences(Number(id), next);
+                  notify?.({ type: NotificationTypes.success, message: 'Discount change preference updated', meta: { type: 'price_alert_pref' } });
+                }}
+              />
+              <span>Notify me when discount increases</span>
+            </label>
           </div>
         </div>
       </div>
