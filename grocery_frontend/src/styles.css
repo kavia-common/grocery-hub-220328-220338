@@ -1,10 +1,20 @@
+/*
+  NOTE:
+  CSS files are not processed with JavaScript at build time, so expressions like
+  ${process.env.VAR} are invalid CSS and cause the build to fail. If you need to
+  theme via environment variables, inject a <style> block at runtime or map
+  env values to CSS variables in JS (e.g., in index.js) by setting
+  document.documentElement.style.setProperty('--primary', value).
+*/
+
 :root{
-  --primary: ${process.env.REACT_APP_THEME_PRIMARY || "#2563EB"};
-  --secondary: ${process.env.REACT_APP_THEME_SECONDARY || "#F59E0B"};
-  --error: ${process.env.REACT_APP_THEME_ERROR || "#EF4444"};
-  --bg: ${process.env.REACT_APP_THEME_BG || "#f9fafb"};
-  --surface: ${process.env.REACT_APP_THEME_SURFACE || "#ffffff"};
-  --text: ${process.env.REACT_APP_THEME_TEXT || "#111827"};
+  /* Static defaults; can be overridden at runtime via JS if needed */
+  --primary: #2563EB;
+  --secondary: #F59E0B;
+  --error: #EF4444;
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --text: #111827;
 }
 
 *{ box-sizing: border-box; }
