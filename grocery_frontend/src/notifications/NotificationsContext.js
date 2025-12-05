@@ -42,6 +42,11 @@ export function NotificationsProvider({ children }) {
     return created;
   }, []);
 
+  // Convenience wrappers for common types
+  const notifySuccess = useCallback((message, meta) => notify({ type: NotificationTypes.success, message, meta }), [notify]);
+  const notifyWarning = useCallback((message, meta) => notify({ type: NotificationTypes.warning, message, meta }), [notify]);
+  const notifyError = useCallback((message, meta) => notify({ type: NotificationTypes.error, message, meta }), [notify]);
+
   const markRead = useCallback(async (id) => {
     await svcMarkAsRead(id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
@@ -62,6 +67,9 @@ export function NotificationsProvider({ children }) {
       markRead,
       clearAll,
       NotificationTypes,
+      notifySuccess,
+      notifyWarning,
+      notifyError,
     }),
     [notifications, unreadCount, notify, markRead, clearAll]
   );

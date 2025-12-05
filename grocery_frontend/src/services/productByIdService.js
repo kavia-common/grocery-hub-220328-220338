@@ -30,3 +30,5 @@ export async function fetchProductById(id) {
     return { ...found, isInStock: typeof qty === "number" ? qty > 0 : undefined };
   }
 }
+
+export const getProductById = fetchProductById;

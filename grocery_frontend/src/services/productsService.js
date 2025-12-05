@@ -132,3 +132,6 @@ export async function addToCart(productId, quantity = 1, note) {
     return { product_id: productId, quantity, note };
   }
 }
+
+// Compatibility aliases for other modules
+export const getProducts = fetchProducts;

@@ -21,6 +21,7 @@ import { AddressProvider } from "./addresses/AddressContext";
 import BuyAgainPage from "./pages/BuyAgainPage";
 import CombosPage from "./pages/CombosPage";
 import ComboDetailPage from "./pages/ComboDetailPage";
+import ImageSearchPage from "./pages/ImageSearchPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -98,6 +99,7 @@ function AppShell() {
             <Route path="/coupons" element={<CouponsPage />} />
             <Route path="/instant" element={<InstantPage />} />
             <Route path="/addresses" element={<AddressBookPage />} />
+            <Route path="/image-search" element={<ImageSearchPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route
               path="/buy-again"
