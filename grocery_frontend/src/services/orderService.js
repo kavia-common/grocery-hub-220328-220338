@@ -351,3 +351,36 @@ export async function advanceStatus(orderId) {
   }
   return normalizeOrder(orders[idx]);
 }
+
+// ---- Mock-only credit notes helpers for instant refunds ----
+const CREDIT_NOTES_KEY = "ghub_order_credit_notes_v1";
+function readCreditNotes() {
+  try { return JSON.parse(localStorage.getItem(CREDIT_NOTES_KEY)) || {}; } catch { return {}; }
+}
+function writeCreditNotes(map) {
+  try { localStorage.setItem(CREDIT_NOTES_KEY, JSON.stringify(map || {})); } catch {}
+}
+
+// PUBLIC_INTERFACE
+export function addCreditNote(orderId, amount, note = "Instant refund credit") {
+  /** Mock-only: attach a credit note to an order id for display. Does not affect payment flows. */
+  const map = readCreditNotes();
+  const entry = {
+    id: `cred_${Date.now()}`,
+    orderId,
+    amount: Number(amount || 0),
+    note,
+    createdAt: new Date().toISOString(),
+  };
+  if (!map[orderId]) map[orderId] = [];
+  map[orderId].push(entry);
+  writeCreditNotes(map);
+  return entry;
+}
+
+// PUBLIC_INTERFACE
+export function getCreditNotes(orderId) {
+  /** Mock-only: get credit notes for an order id. */
+  const map = readCreditNotes();
+  return map[orderId] || [];
+}

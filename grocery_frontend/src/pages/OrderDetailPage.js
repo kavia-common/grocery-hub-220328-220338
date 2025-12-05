@@ -5,6 +5,7 @@ import { advanceStatus, getOrder, isBackendMode, paymentSummaryShort } from "../
 import BuyAgain from "../components/BuyAgain";
 import { useNotifications } from "../notifications/NotificationsContext";
 import api from "../api";
+import ReturnRequestModal from "../components/ReturnRequestModal";
 
 /**
  * PUBLIC_INTERFACE
@@ -17,6 +18,8 @@ export default function OrderDetailPage() {
   const [error, setError] = useState("");
   const [backendMode, setBackendMode] = useState(true);
   const navigate = useNavigate();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const { notify, NotificationTypes } = useNotifications();
 
   const load = async () => {
@@ -148,7 +151,7 @@ export default function OrderDetailPage() {
                   <div>{p?.name || "Item"}</div>
                   <div className="small">Qty: {it.quantity}</div>
                 </div>
-                <div className="row" style={{ gap: 8 }}>
+                <div className="row" style={{ gap: 8, alignItems: "center" }}>
                   <div>${Number(it.price || p?.price || 0).toFixed(2)}</div>
                   <button
                     className="btn btn-secondary"
@@ -161,11 +164,29 @@ export default function OrderDetailPage() {
                   >
                     Add again
                   </button>
+                  <button
+                    className="btn btn-primary"
+                    aria-label={`Request return for ${p?.name || "item"}`}
+                    onClick={() => { setSelectedItem(it); setModalOpen(true); }}
+                  >
+                    Return/Refund
+                  </button>
                   {!inStock && <span className="small" style={{ color: "#6b7280" }}>Out of stock — Remind me</span>}
                 </div>
               </div>
             );
           })}
+          {modalOpen && (
+            <ReturnRequestModal
+              isOpen={modalOpen}
+              onClose={() => setModalOpen(false)}
+              orderId={order?.id}
+              item={selectedItem}
+              onCreated={() => {
+                navigate("/returns");
+              }}
+            />
+          )}
         </div>
         <div className="row" style={{ marginTop: 8, justifyContent: "flex-end" }}>
           <strong>Total: ${Number(order.total_amount || 0).toFixed(2)}</strong>

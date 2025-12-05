@@ -23,6 +23,7 @@ import CombosPage from "./pages/CombosPage";
 import ComboDetailPage from "./pages/ComboDetailPage";
 import ImageSearchPage from "./pages/ImageSearchPage";
 import MembershipsPage from "./pages/MembershipsPage";
+import ReturnsPage from "./pages/ReturnsPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -94,6 +95,14 @@ function AppShell() {
               element={
                 <ProtectedRoute>
                   <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/returns"
+              element={
+                <ProtectedRoute>
+                  <ReturnsPage />
                 </ProtectedRoute>
               }
             />

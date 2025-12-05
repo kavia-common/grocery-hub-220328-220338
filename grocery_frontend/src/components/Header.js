@@ -43,6 +43,7 @@ export default function Header() {
         <MembershipBadge />
         <Link to="/cart">Cart</Link>
         <Link to="/orders">Orders</Link>
+        <Link to="/returns" aria-label="Go to Returns">Returns</Link>
         <NotificationBell />
         {user ? (
           <button className="btn btn-ghost" onClick={logout}>Logout</button>

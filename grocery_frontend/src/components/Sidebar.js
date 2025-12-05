@@ -34,6 +34,9 @@ export default function Sidebar(){
           <Link to="/orders" className="row" style={{ gap: 6, marginTop: 8 }}>
             <span className="badge">Orders</span> Your orders
           </Link>
+          <Link to="/returns" className="row" style={{ gap: 6, marginTop: 8 }} aria-label="Go to Returns">
+            <span className="badge" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>Returns</span> Returns & Refunds
+          </Link>
           <Link to="/image-search" className="row" style={{ gap: 6, marginTop: 8 }}>
             <span className="badge" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>Image</span> Image Search
           </Link>
