@@ -4,6 +4,7 @@ import api from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { fetchProducts } from "../services/productsService";
 import { useWishlist } from "../wishlist/WishlistContext";
+import SmartSuggestions from "../components/SmartSuggestions";
 
 export default function ProductGrid() {
   const [loading, setLoading] = useState(true);
@@ -66,7 +67,19 @@ export default function ProductGrid() {
   if (error) return <div className="card error">{error}</div>;
 
   return (
-    <div className="grid">
+    <>
+      {token ? (
+        <div style={{ marginBottom: 12 }}>
+          <SmartSuggestions
+            location="grid"
+            limit={4}
+            onAdded={() => {
+              // Keep behavior simple: no reload needed here; cart updates are server-side.
+            }}
+          />
+        </div>
+      ) : null}
+      <div className="grid">
       {items.map((p) => {
         const hasDiscount = p.isDiscounted || (typeof p.discountPercent === "number" && p.discountPercent > 0);
         const weightOrQuality = p.weight || p.quality || "";
@@ -161,5 +174,6 @@ export default function ProductGrid() {
         );
       })}
     </div>
+    </>
   );
 }

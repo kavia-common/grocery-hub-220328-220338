@@ -7,6 +7,7 @@ import {
   setAppliedCode,
   validateCoupon,
 } from "../services/couponsService";
+import SmartSuggestions from "../components/SmartSuggestions";
 
 export default function CartPage() {
   const [items, setItems] = useState([]);
@@ -46,7 +47,7 @@ export default function CartPage() {
       setPromoInput(initial.toUpperCase());
       onApply(initial.toUpperCase(), true);
     }
-  }, [loc.key]);
+  }, [loc.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = async (id, quantity) => {
     try {
@@ -98,6 +99,19 @@ export default function CartPage() {
   return (
     <div className="card">
       <h2>Your Cart</h2>
+
+      {/* Smart Suggestions */}
+      <div style={{ marginTop: 8, marginBottom: 12 }}>
+        <SmartSuggestions
+          location="cart"
+          limit={5}
+          onAdded={() => {
+            // When suggestions add to cart, refresh cart so totals reflect
+            load();
+          }}
+        />
+      </div>
+
       {items.length === 0 ? (
         <p>
           Cart is empty. <Link to="/">Shop now</Link>
