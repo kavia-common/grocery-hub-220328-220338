@@ -52,6 +52,8 @@ input.input:focus{ box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
   .product-media img{ height:220px !important; }
 }
 .badge{ background: #eef2ff; color: var(--primary); padding:2px 8px; border-radius: 999px; font-size: 12px; }
+.badge.error{ background:#FEE2E2; color:#991B1B; }
+.badge.ok{ background:#DBEAFE; color:#1E40AF; }
 .discount-badge{ user-select: none; }
 /* Instant delivery badge */
 .badge-instant{

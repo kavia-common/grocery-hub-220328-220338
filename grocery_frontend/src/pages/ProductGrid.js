@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { fetchProducts, fetchInstantProducts } from "../services/productsService";
+import { isSubscribed, subscribe, unsubscribe, popNextBanner } from "../services/stockAlertsService";
 import { useWishlist } from "../wishlist/WishlistContext";
 import SmartSuggestions from "../components/SmartSuggestions";
 
@@ -16,6 +17,8 @@ export default function ProductGrid() {
   const search = params.get("search") || "";
   const category = params.get("category") || "";
   const { token } = useAuth();
+  const [banner, setBanner] = useState("");
+  const [subs, setSubs] = useState(new Set());
   const { isFavorite, toggle } = useWishlist();
   const navigate = useNavigate();
 
@@ -45,8 +48,30 @@ export default function ProductGrid() {
         if (active) setLoading(false);
       }
     })();
+    // subscription snapshot for current products
+    (async () => {
+      try {
+        const ids = await Promise.all(
+          (items || []).map((p) => isSubscribed(p.id).then((v) => [p.id, v]))
+        );
+        if (active) {
+          const s = new Set();
+          ids.forEach(([id, v]) => v && s.add(Number(id)));
+          setSubs(s);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    // banner polling (lightweight)
+    const t = setInterval(() => {
+      const msg = popNextBanner();
+      if (msg) setBanner(msg);
+    }, 1200);
     return () => {
       active = false;
+      clearInterval(t);
     };
   }, [search, category]);
 
@@ -76,11 +101,47 @@ export default function ProductGrid() {
     }
   };
 
+  const onSubscribe = async (productId) => {
+    await subscribe(productId);
+    setSubs((prev) => {
+      const s = new Set(prev);
+      s.add(Number(productId));
+      return s;
+    });
+    setBanner("We'll notify you when it's back in stock.");
+  };
+  const onUnsubscribe = async (productId) => {
+    await unsubscribe(productId);
+    setSubs((prev) => {
+      const s = new Set(prev);
+      s.delete(Number(productId));
+      return s;
+    });
+  };
+
   if (loading) return <div className="card">Loading...</div>;
   if (error) return <div className="card error">{error}</div>;
 
   return (
     <>
+      {banner ? (
+        <div
+          className="card"
+          style={{
+            marginBottom: 12,
+            background: "linear-gradient(135deg, rgba(37,99,235,0.12), #ffffff)",
+            border: "1px solid #DBEAFE",
+          }}
+        >
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <span role="img" aria-label="bell">🔔</span>
+              <strong>{banner}</strong>
+            </div>
+            <button className="btn btn-ghost" onClick={() => setBanner("")}>Dismiss</button>
+          </div>
+        </div>
+      ) : null}
       {token ? (
         <div style={{ marginBottom: 12 }}>
           <SmartSuggestions
@@ -135,6 +196,8 @@ export default function ProductGrid() {
       {items.map((p) => {
         const hasDiscount = p.isDiscounted || (typeof p.discountPercent === "number" && p.discountPercent > 0);
         const weightOrQuality = p.weight || p.quality || "";
+        const inStock = typeof p.stockQty === "number" ? p.stockQty > 0 : (typeof p.isInStock === "boolean" ? p.isInStock : true);
+        const subscribed = subs.has(Number(p.id));
         return (
           <div key={p.id} className={`card product-card ${p.isInstant ? "instant-card" : ""}`} style={{ position: "relative" }}>
             {hasDiscount ? (
@@ -159,6 +222,37 @@ export default function ProductGrid() {
                   ? `-${p.discountPercent}%`
                   : "Deal"}
               </div>
+            ) : null}
+            {typeof p.stockQty === "number" ? (
+              inStock ? (
+                <div
+                  className="badge"
+                  title={`${p.stockQty} in stock`}
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    left: 90,
+                    background: "#DBEAFE",
+                    color: "#1E40AF",
+                  }}
+                >
+                  In stock • {p.stockQty}
+                </div>
+              ) : (
+                <div
+                  className="badge"
+                  title="Out of stock"
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    left: 90,
+                    background: "#FEE2E2",
+                    color: "#991B1B",
+                  }}
+                >
+                  Out of stock
+                </div>
+              )
             ) : null}
             {p.isInstant ? (
               <div
@@ -221,12 +315,23 @@ export default function ProductGrid() {
             </div>
 
             <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn btn-primary" onClick={() => addToCart(p.id)}>
+              <button className="btn btn-primary" onClick={() => addToCart(p.id)} disabled={!inStock}>
                 Add to Cart
               </button>
-              <button className="btn btn-secondary" onClick={() => quickBuy(p.id)}>
+              <button className="btn btn-secondary" onClick={() => quickBuy(p.id)} disabled={!inStock}>
                 Quick Buy
               </button>
+              {!inStock ? (
+                subscribed ? (
+                  <button className="btn btn-ghost" onClick={() => onUnsubscribe(p.id)} title="Cancel reminder">
+                    🔕 Cancel
+                  </button>
+                ) : (
+                  <button className="btn btn-ghost" onClick={() => onSubscribe(p.id)} title="Remind me when in stock">
+                    🔔 Remind me
+                  </button>
+                )
+              ) : null}
               <div className="spacer" />
               <Link className="btn btn-ghost" to={`/product/${p.id}`}>
                 View

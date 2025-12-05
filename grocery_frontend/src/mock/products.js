@@ -10,10 +10,12 @@
  * - ProductDetail uses: id, name, description, category, image_url, price.
  * - Instant delivery: products may include isInstant: boolean and instantEta: string (e.g., "10 min").
  */
-// PUBLIC_INTERFACE
-export function getMockProducts() {
-  /** Returns a list of sample products with name, price, weight/quality and discount info. */
-  return [
+ // PUBLIC_INTERFACE
+ export function getMockProducts() {
+   /** Returns a list of sample products with name, price, weight/quality and discount info.
+    *  Enhanced with stockQty and derived isInStock (stockQty > 0).
+    */
+   return [
     {
       id: 1,
       name: "Honeycrisp Apples",
@@ -26,7 +28,8 @@ export function getMockProducts() {
       discountPercent: 10,
       isDiscounted: true,
       isInstant: true,
-      instantEta: "10 min"
+      instantEta: "10 min",
+      stockQty: 12
     },
     {
       id: 2,
@@ -40,7 +43,8 @@ export function getMockProducts() {
       discountPercent: 0,
       isDiscounted: false,
       isInstant: true,
-      instantEta: "15 min"
+      instantEta: "15 min",
+      stockQty: 0
     },
     {
       id: 3,
@@ -53,7 +57,8 @@ export function getMockProducts() {
       weight: "1 gal",
       discountPercent: 15,
       isDiscounted: true,
-      isInstant: false
+      isInstant: false,
+      stockQty: 5
     },
     {
       id: 4,
@@ -67,7 +72,8 @@ export function getMockProducts() {
       discountPercent: 0,
       isDiscounted: false,
       isInstant: true,
-      instantEta: "12 min"
+      instantEta: "12 min",
+      stockQty: 8
     },
     {
       id: 5,
@@ -81,7 +87,8 @@ export function getMockProducts() {
       quality: "Organic",
       discountPercent: 20,
       isDiscounted: true,
-      isInstant: false
+      isInstant: false,
+      stockQty: 0
     },
     {
       id: 6,
@@ -94,7 +101,8 @@ export function getMockProducts() {
       discountPercent: 0,
       isDiscounted: false,
       isInstant: true,
-      instantEta: "20 min"
+      instantEta: "20 min",
+      stockQty: 16
     },
     {
       id: 7,
@@ -107,7 +115,8 @@ export function getMockProducts() {
       weight: "500 g",
       discountPercent: 12,
       isDiscounted: true,
-      isInstant: false
+      isInstant: false,
+      stockQty: 10
     },
     {
       id: 8,
@@ -120,7 +129,8 @@ export function getMockProducts() {
       discountPercent: 0,
       isDiscounted: false,
       isInstant: true,
-      instantEta: "10 min"
+      instantEta: "10 min",
+      stockQty: 2
     },
     {
       id: 9,
@@ -132,7 +142,8 @@ export function getMockProducts() {
       weightOrQuality: "Each",
       discountPercent: 5,
       isDiscounted: true,
-      isInstant: false
+      isInstant: false,
+      stockQty: 25
     },
     {
       id: 10,
@@ -144,7 +155,8 @@ export function getMockProducts() {
       weightOrQuality: "64 fl oz",
       discountPercent: 0,
       isDiscounted: false,
-      isInstant: false
+      isInstant: false,
+      stockQty: 7
     },
     {
       id: 11,
@@ -158,7 +170,8 @@ export function getMockProducts() {
       discountPercent: 18,
       isDiscounted: true,
       isInstant: true,
-      instantEta: "10 min"
+      instantEta: "10 min",
+      stockQty: 0
     },
     {
       id: 12,
@@ -170,7 +183,8 @@ export function getMockProducts() {
       weightOrQuality: "32 oz",
       discountPercent: 0,
       isDiscounted: false,
-      isInstant: false
+      isInstant: false,
+      stockQty: 11
     }
   ];
 }
