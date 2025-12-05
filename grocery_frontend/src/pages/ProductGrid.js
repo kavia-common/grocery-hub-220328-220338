@@ -8,6 +8,7 @@ import { useWishlist } from "../wishlist/WishlistContext";
 import SmartSuggestions from "../components/SmartSuggestions";
 import BuyAgain from "../components/BuyAgain";
 import { listCombos } from "../services/combosService";
+import { getPerkFlags } from "../services/membershipsService";
 import priceAlertService from "../services/priceAlertService";
 import { useNotifications } from "../notifications/NotificationsContext";
 
@@ -29,6 +30,7 @@ export default function ProductGrid() {
   const [priceAlertSubs, setPriceAlertSubs] = useState(new Set());
   const pricePollRef = useRef(null);
   const { notify, NotificationTypes } = useNotifications();
+  const [memberPerks, setMemberPerks] = useState({ freeDelivery: false, extraDiscountPercent: 0, earlyAccess: false });
 
   useEffect(() => {
     let active = true;
@@ -36,6 +38,8 @@ export default function ProductGrid() {
       setLoading(true);
       setError("");
       try {
+        const perks = await getPerkFlags();
+        if (active) setMemberPerks(perks || { freeDelivery: false, extraDiscountPercent: 0, earlyAccess: false });
         const data = await fetchProducts({ search: search || undefined, category: category || undefined });
         if (active) setItems(data);
         if (active && !search && !category) {
@@ -284,13 +288,38 @@ export default function ProductGrid() {
       ) : null}
 
       <div className="grid">
-        {items.map((p) => {
+        {items
+          .filter((p) => {
+            // If earlyAccessOnly, show only to members with earlyAccess perk
+            if (p.earlyAccessOnly && !memberPerks.earlyAccess) {
+              // still render with lock? We'll allow showing locked with badge, not filter out from grid.
+              return true;
+            }
+            return true;
+          })
+          .map((p) => {
           const hasDiscount = p.isDiscounted || (typeof p.discountPercent === "number" && p.discountPercent > 0);
           const weightOrQuality = p.weight || p.quality || "";
           const inStock = typeof p.stockQty === "number" ? p.stockQty > 0 : (typeof p.isInStock === "boolean" ? p.isInStock : true);
           const subscribed = subs.has(Number(p.id));
           return (
             <div key={p.id} className={`card product-card ${p.isInstant ? "instant-card" : ""}`} style={{ position: "relative" }}>
+              {p.earlyAccessOnly && !memberPerks.earlyAccess ? (
+                <div
+                  className="badge"
+                  aria-label="Locked Early Access"
+                  title="Members get early access"
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    left: 10,
+                    background: "#FEE2E2",
+                    color: "#991B1B",
+                  }}
+                >
+                  🔒 Early Access
+                </div>
+              ) : null}
               {hasDiscount ? (
                 <div
                   className="discount-badge"
@@ -406,10 +435,10 @@ export default function ProductGrid() {
               </div>
 
               <div className="row" style={{ marginTop: 8 }}>
-                <button className="btn btn-primary" onClick={() => addToCart(p.id)} disabled={!inStock}>
+                <button className="btn btn-primary" onClick={() => addToCart(p.id)} disabled={!inStock || (p.earlyAccessOnly && !memberPerks.earlyAccess)}>
                   Add to Cart
                 </button>
-                <button className="btn btn-secondary" onClick={() => quickBuy(p.id)} disabled={!inStock}>
+                <button className="btn btn-secondary" onClick={() => quickBuy(p.id)} disabled={!inStock || (p.earlyAccessOnly && !memberPerks.earlyAccess)}>
                   Quick Buy
                 </button>
                 {!inStock ? (

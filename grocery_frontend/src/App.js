@@ -22,6 +22,7 @@ import BuyAgainPage from "./pages/BuyAgainPage";
 import CombosPage from "./pages/CombosPage";
 import ComboDetailPage from "./pages/ComboDetailPage";
 import ImageSearchPage from "./pages/ImageSearchPage";
+import MembershipsPage from "./pages/MembershipsPage";
 
 /**
  * PUBLIC_INTERFACE
@@ -100,6 +101,7 @@ function AppShell() {
             <Route path="/instant" element={<InstantPage />} />
             <Route path="/addresses" element={<AddressBookPage />} />
             <Route path="/image-search" element={<ImageSearchPage />} />
+            <Route path="/memberships" element={<MembershipsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route
               path="/buy-again"

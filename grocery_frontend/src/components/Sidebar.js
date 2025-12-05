@@ -37,6 +37,9 @@ export default function Sidebar(){
           <Link to="/image-search" className="row" style={{ gap: 6, marginTop: 8 }}>
             <span className="badge" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>Image</span> Image Search
           </Link>
+          <Link to="/memberships" className="row" style={{ gap: 6, marginTop: 8 }}>
+            <span className="badge" style={{ background: "#DBEAFE", color: "#1E40AF" }}>Membership</span> Plans
+          </Link>
         </div>
       </div>
     </aside>

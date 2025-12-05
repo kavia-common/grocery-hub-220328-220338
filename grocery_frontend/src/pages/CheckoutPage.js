@@ -12,6 +12,7 @@ import AddressSelector from "../components/AddressSelector";
 import { useAddress } from "../addresses/AddressContext";
 import PaymentMethodSelector from "../components/PaymentMethodSelector";
 import { useNotifications } from "../notifications/NotificationsContext";
+import { getPerkFlags, isMemberActive } from "../services/membershipsService";
 
 export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
@@ -26,6 +27,8 @@ export default function CheckoutPage() {
   const [paymentValid, setPaymentValid] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [initialPaymentMethod, setInitialPaymentMethod] = useState(null);
+  const [memberPerks, setMemberPerks] = useState({ freeDelivery: false, extraDiscountPercent: 0, earlyAccess: false });
+  const [memberActive, setMemberActive] = useState(false);
 
   useEffect(() => {
     // load cart for totals preview
@@ -40,6 +43,15 @@ export default function CheckoutPage() {
       const last = localStorage.getItem("lastSelectedPaymentMethod");
       if (last) setInitialPaymentMethod(last);
     } catch {}
+  }, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [perks, active] = await Promise.all([getPerkFlags(), isMemberActive()]);
+        setMemberPerks(perks || { freeDelivery: false, extraDiscountPercent: 0, earlyAccess: false });
+        setMemberActive(!!active);
+      } catch {}
+    })();
   }, []);
 
   useEffect(() => {
@@ -86,10 +98,16 @@ export default function CheckoutPage() {
   };
 
   const { discount, totalAfterDiscount } = computeDiscount(subtotal, appliedCoupon);
-  const shipping = 0;
-  const taxRate = 0;
-  const tax = (totalAfterDiscount + shipping) * taxRate;
-  const finalTotal = totalAfterDiscount + shipping + tax;
+  // Membership extra discount applies AFTER coupons, BEFORE tax
+  const extraPercent = Number(memberPerks.extraDiscountPercent || 0);
+  const memberExtraDiscount = Math.max(0, (totalAfterDiscount * extraPercent) / 100);
+  const afterAllDiscounts = totalAfterDiscount - memberExtraDiscount;
+
+  // Shipping free if member perk enabled
+  const shipping = memberPerks.freeDelivery ? 0 : 4.99; // default mock shipping when not free
+  const taxRate = 0; // tax disabled in mock
+  const tax = (afterAllDiscounts + shipping) * taxRate;
+  const finalTotal = afterAllDiscounts + shipping + tax;
 
   const placeOrder = async () => {
     if (!paymentValid || !paymentData) {
@@ -109,6 +127,10 @@ export default function CheckoutPage() {
         .catch(() => { /* ignore backend errors for mock-first */ });
 
       // Create an order in frontend service with snapshot of shippingAddress
+      if (memberActive && (memberPerks.freeDelivery || extraPercent > 0)) {
+        notify({ type: NotificationTypes.info, message: "Membership perks applied at checkout." });
+      }
+
       const order = await createOrder({
         items: cartItems,
         total: finalTotal,
@@ -125,6 +147,19 @@ export default function CheckoutPage() {
           zip: selectedAddress.zip,
         } : null,
         payment: paymentData,
+        membershipSnapshot: {
+          active: memberActive,
+          perks: memberPerks,
+          couponCode: appliedCoupon?.code || null,
+          breakdown: {
+            couponDiscount: discount,
+            membershipDiscount: memberExtraDiscount,
+            shipping,
+            subtotal,
+            subtotalAfterCoupon: totalAfterDiscount,
+            total: finalTotal,
+          }
+        }
       });
 
       // Optional: clear cart on frontend if backend didn't
@@ -197,6 +232,29 @@ export default function CheckoutPage() {
         initialMethod={initialPaymentMethod}
       />
 
+      {/* Membership perks info */}
+      <div className="card" style={{ marginTop: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.10), #ffffff)", border: "1px solid #FDE68A" }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div className="row" style={{ gap: 8 }}>
+            <span className="badge" style={{ background: "#FEF3C7", color: "#B45309" }}>Membership Perks</span>
+            <div className="small" style={{ color: "#6b7280" }}>
+              Discounts stack: coupon first, then membership extra discount. Applied before tax.
+            </div>
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            <span className="badge" style={{ background: memberPerks.freeDelivery ? "#DBEAFE" : "#F3F4F6", color: memberPerks.freeDelivery ? "#1E3A8A" : "#6b7280" }}>
+              {memberPerks.freeDelivery ? "Free Delivery" : "Delivery Charged"}
+            </span>
+            <span className="badge" style={{ background: extraPercent > 0 ? "#DBEAFE" : "#F3F4F6", color: extraPercent > 0 ? "#1E3A8A" : "#6b7280" }}>
+              Extra {extraPercent}% off
+            </span>
+            <span className="badge" style={{ background: memberPerks.earlyAccess ? "#DBEAFE" : "#F3F4F6", color: memberPerks.earlyAccess ? "#1E3A8A" : "#6b7280" }}>
+              {memberPerks.earlyAccess ? "Early Access" : "No Early Access"}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Totals */}
       <div className="card" style={{ marginTop: 12 }}>
         <div className="row" style={{ justifyContent: "space-between" }}>
@@ -210,8 +268,12 @@ export default function CheckoutPage() {
           </div>
           <div>- ${discount.toFixed(2)}</div>
         </div>
+        <div className="row" style={{ justifyContent: "space-between", color: memberExtraDiscount > 0 ? "#059669" : undefined }}>
+          <div>Membership discount {extraPercent > 0 ? <span className="small">(after coupons)</span> : null}</div>
+          <div>- ${memberExtraDiscount.toFixed(2)}</div>
+        </div>
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>Shipping</div>
+          <div>Shipping {memberPerks.freeDelivery ? <span className="badge" style={{ marginLeft: 6 }}>Free</span> : null}</div>
           <div>${shipping.toFixed(2)}</div>
         </div>
         <div className="row" style={{ justifyContent: "space-between" }}>

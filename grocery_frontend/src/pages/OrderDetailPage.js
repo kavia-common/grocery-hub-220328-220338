@@ -111,6 +111,28 @@ export default function OrderDetailPage() {
         ) : null}
       </div>
 
+      {order.membershipSnapshot ? (
+        <div className="card" style={{ marginTop: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.10), #ffffff)", border: "1px solid #FDE68A" }}>
+          <strong>Membership perks applied</strong>
+          <div className="row" style={{ marginTop: 6, gap: 6, flexWrap: "wrap" }}>
+            <span className="badge" style={{ background: order.membershipSnapshot.perks?.freeDelivery ? "#DBEAFE" : "#F3F4F6", color: order.membershipSnapshot.perks?.freeDelivery ? "#1E3A8A" : "#6b7280" }}>
+              {order.membershipSnapshot.perks?.freeDelivery ? "Free Delivery" : "Delivery Charged"}
+            </span>
+            <span className="badge" style={{ background: (order.membershipSnapshot.perks?.extraDiscountPercent || 0) > 0 ? "#DBEAFE" : "#F3F4F6", color: (order.membershipSnapshot.perks?.extraDiscountPercent || 0) > 0 ? "#1E3A8A" : "#6b7280" }}>
+              Extra {order.membershipSnapshot.perks?.extraDiscountPercent || 0}% off
+            </span>
+            <span className="badge" style={{ background: order.membershipSnapshot.perks?.earlyAccess ? "#DBEAFE" : "#F3F4F6", color: order.membershipSnapshot.perks?.earlyAccess ? "#1E3A8A" : "#6b7280" }}>
+              {order.membershipSnapshot.perks?.earlyAccess ? "Early Access" : "No Early Access"}
+            </span>
+          </div>
+          {order.membershipSnapshot.breakdown ? (
+            <div className="small" style={{ marginTop: 6, color: "#6b7280" }}>
+              Coupon: -${Number(order.membershipSnapshot.breakdown.couponDiscount || 0).toFixed(2)} · Membership: -${Number(order.membershipSnapshot.breakdown.membershipDiscount || 0).toFixed(2)} · Shipping: ${Number(order.membershipSnapshot.breakdown.shipping || 0).toFixed(2)}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="card" style={{ marginTop: 12 }}>
         <div className="row" style={{ justifyContent: "space-between" }}>
           <strong>Items</strong>

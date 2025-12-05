@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import NotificationBell from "./NotificationBell";
+import MembershipBadge from "./MembershipBadge";
 
 export default function Header() {
   const [params] = useSearchParams();
@@ -38,6 +39,8 @@ export default function Header() {
         <Link to="/addresses">Addresses</Link>
         <Link to="/buy-again" style={{ color: "#F59E0B" }}>Buy Again</Link>
         <Link to="/image-search" style={{ color: "#2563EB", fontWeight: 600 }}>Image Search</Link>
+        <Link to="/memberships" title="Membership Plans" style={{ color: "#2563EB" }}>Membership</Link>
+        <MembershipBadge />
         <Link to="/cart">Cart</Link>
         <Link to="/orders">Orders</Link>
         <NotificationBell />

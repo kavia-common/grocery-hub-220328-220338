@@ -96,6 +96,7 @@ function normalizeOrder(o) {
     notes: o.notes || "",
     payment: o.payment || null,
     timestamps: o.timestamps || {},
+    membershipSnapshot: o.membershipSnapshot || null,
   };
 }
 
@@ -245,7 +246,7 @@ export async function isBackendMode() {
  * createOrder creates a new order snapshot (mock-first). If backend is available, it attempts
  * to create via backend and returns the normalized order. Otherwise stores to mock with new id.
  */
-export async function createOrder({ items = [], total = 0, address = "", notes = "", shippingAddress = null, payment = null }) {
+export async function createOrder({ items = [], total = 0, address = "", notes = "", shippingAddress = null, payment = null, membershipSnapshot = null }) {
   const now = new Date().toISOString();
 
   // Only keep safe payment meta for mock mode (avoid sensitive fields)
@@ -280,6 +281,7 @@ export async function createOrder({ items = [], total = 0, address = "", notes =
     shippingAddress: shippingAddress || null,
     notes: notes || "",
     payment: safePayment, // include on mock and pass to backend (if supported)
+    membershipSnapshot: membershipSnapshot || null,
     timestamps: {
       PLACED: now,
       PACKED: null,
